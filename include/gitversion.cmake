@@ -1,6 +1,6 @@
 ############################################################################
 # gitversion.cmake
-# Copyright (C) 2010-2024 Belledonne Communications, Grenoble France
+# Copyright (C) 2010-2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -40,15 +40,15 @@ else()
 	set(GIT_TAG)
 endif()
 
-if(FLEXISIP_VERSION)
-	set(GIT_VERSION "${FLEXISIP_VERSION}")
-	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-version.h" @ONLY)
+if(FLEXISIP_CONFERENCE_VERSION)
+	set(GIT_VERSION "${FLEXISIP_CONFERENCE_VERSION}")
+	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-conference-version.h" @ONLY)
 elseif(GIT_DESCRIBE)
 	set(GIT_VERSION "${GIT_DESCRIBE}")
-	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-version.h" @ONLY)
+	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-conference-version.h" @ONLY)
 elseif(GIT_REVISION)
-	set(GIT_VERSION "${FLEXISIP_VERSION}_${GIT_REVISION}")
-	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-version.h" @ONLY)
-elseif(NOT EXISTS "${OUTPUT_DIR}/flexisip-version.h")
-	file(WRITE "${OUTPUT_DIR}/flexisip-version.h" "")
+	set(GIT_VERSION "${FLEXISIP_CONFERENCE_VERSION}_${GIT_REVISION}")
+	configure_file("${WORK_DIR}/gitversion.h.in" "${OUTPUT_DIR}/flexisip-conference-version.h" @ONLY)
+elseif(NOT EXISTS "${OUTPUT_DIR}/flexisip-conference-version.h")
+	file(WRITE "${OUTPUT_DIR}/flexisip-conference-version.h" "")
 endif()

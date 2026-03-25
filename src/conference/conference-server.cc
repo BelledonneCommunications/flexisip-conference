@@ -24,7 +24,7 @@
 #include "belle-sip/utils.h"
 #include "exceptions/bad-configuration.hh"
 #include "flexisip/configmanager.hh"
-#include "flexisip/flexisip-version.h"
+#include "flexisip-conference/flexisip-conference-version.h"
 #include "registrar/binding-parameters.hh"
 #include "registrar/extended-contact.hh"
 #include "registrar/record.hh"
@@ -131,7 +131,7 @@ void ConferenceServer::_init() {
 
 	mCore->setNortpTimeout(static_cast<int>(chrono::duration_cast<chrono::seconds>(noRTPTimeout).count()));
 
-	mCore->setUserAgent("Flexisip-conference", FLEXISIP_GIT_VERSION);
+	mCore->setUserAgent("Flexisip-conference", FLEXISIP_CONFERENCE_GIT_VERSION);
 	mCore->addListener(shared_from_this());
 	mCore->enableConferenceServer(true);
 	mCore->setTransports(transports);

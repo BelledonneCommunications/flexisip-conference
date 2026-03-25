@@ -1,6 +1,6 @@
 ############################################################################
 # CMakeLists.txt
-# Copyright (C) 2019-2026 Belledonne Communications, Grenoble France
+# Copyright (C) 2010-2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -11,7 +11,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -20,15 +20,18 @@
 #
 ############################################################################
 
-find_package(Git)
-
-set(gitversion_script "${CMAKE_CURRENT_SOURCE_DIR}/gitversion.cmake")
-set(workdir "${CMAKE_CURRENT_SOURCE_DIR}")
-set(outputdir "${CMAKE_CURRENT_BINARY_DIR}/flexisip-conference")
-set(flexisip_conference_version_h "${outputdir}/flexisip-conference-version.h")
-
-add_custom_target(flexisip-conference-git-version ALL
-	COMMAND ${CMAKE_COMMAND} -DGIT_EXECUTABLE=${GIT_EXECUTABLE} -DFLEXISIP_CONFERENCE_VERSION=${FLEXISIP_CONFERENCE_VERSION}
-		-DWORK_DIR=${workdir} -DOUTPUT_DIR=${outputdir} -P "${gitversion_script}"
-	BYPRODUCTS "${flexisip_conference_version_h}"
+add_library(flexisip_conference_tester_utils
+    server/test-conference-server.cc server/test-conference-server.hh
 )
+
+target_include_directories(flexisip_conference_tester_utils PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
+# C++ 20 adds the support for char8_t which adds a lot of backward compatibility problems.
+# See: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r3.html
+# So for now disable it until we need it.
+list(APPEND CXX_BUILD_FLAGS "-fno-char8_t")
+
+target_compile_options(flexisip_conference_tester_utils PRIVATE ${CPP_BUILD_FLAGS} ${CXX_BUILD_FLAGS})
+target_link_libraries(flexisip_conference_tester_utils PRIVATE flexisip_tester_utils)

@@ -1,6 +1,6 @@
 /*
     Flexisip, a flexible SIP proxy server with media capabilities.
-    Copyright (C) 2010-2025 Belledonne Communications SARL, All rights reserved.
+    Copyright (C) 2010-2026 Belledonne Communications SARL, All rights reserved.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -22,11 +22,11 @@
 #include "linphone++/chat_room.hh"
 #include "linphone++/enums.hh"
 
+#include "chat-room-builder.hh"
+#include "client-core.hh"
 #include "conference/registration-subscription.hh"
-#include "utils/chat-room-builder.hh"
-#include "utils/client-core.hh"
-#include "utils/test-patterns/test.hh"
-#include "utils/test-suite.hh"
+#include "test-patterns/test.hh"
+#include "test-suite.hh"
 
 using namespace flexisip;
 using namespace flexisip::tester;
@@ -37,8 +37,7 @@ class RegistrationSubscriptionTester : public RegistrationSubscription {
 public:
 	RegistrationSubscriptionTester(const std::shared_ptr<linphone::ChatRoom>& cr,
 	                               const std::shared_ptr<const linphone::Address>& participant)
-	    : RegistrationSubscription(true, cr, participant) {
-	}
+	    : RegistrationSubscription(true, cr, participant) {}
 	bool checkCapabilities(const std::string& specs) {
 		return isContactCompatible(specs);
 	}

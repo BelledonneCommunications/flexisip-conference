@@ -39,10 +39,6 @@
 #include <sys/prctl.h>
 #endif
 
-#ifdef ENABLE_TRANSCODER
-#include <mediastreamer2/msfactory.h>
-#endif
-
 #include <openssl/crypto.h>
 #include <openssl/opensslconf.h>
 #if defined(OPENSSL_THREADS)
@@ -60,7 +56,8 @@
 
 #include <tclap/CmdLine.h>
 
-#include <flexisip/flexisip-version.h>
+#include <flexisip-conference/flexisip-conference-version.h>
+#include <flexisip-conference-config.h>
 #include <flexisip/logmanager.hh>
 #include <flexisip/module.hh>
 #include <flexisip/sofia-wrapper/su-root.hh>
@@ -68,13 +65,12 @@
 #ifndef CONFIG_DIR
 #define CONFIG_DIR
 #endif
-#ifndef FLEXISIP_GIT_VERSION
-#define FLEXISIP_GIT_VERSION "undefined"
+#ifndef FLEXISIP_CONFERENCE_GIT_VERSION
+#define FLEXISIP_CONFERENCE_GIT_VERSION "undefined"
 #endif
 
 #include "agent.hh"
 #include "auth/db/authdb.hh"
-#include "cli.hh"
 #include "configdumper.hh"
 #include "etchosts.hh"
 #include "exceptions/bad-configuration.hh"
@@ -82,30 +78,17 @@
 #include "registrar/registrar-db.hh"
 #include "stun.hh"
 
-#ifdef ENABLE_CONFERENCE
 #include "conference/conference-server.hh"
-#include "registration-events/server.hh"
-#endif
-#ifdef ENABLE_B2BUA
-#include "b2bua/b2bua-server.hh"
-#endif // ENABLE_B2BUA
-#ifdef ENABLE_PRESENCE
-#include "presence/observers/presence-longterm.hh"
-#include "presence/presence-server.hh"
-#endif
-#ifdef ENABLE_VOICEMAIL
-#include "voicemail/voicemail-server.hh"
-#endif // ENABLE_VOICEMAIL
-
-#ifdef ENABLE_SNMP
-#include "snmp/snmp-agent.hh"
-#endif
 
 #if ENABLE_FLEXIAPI
 #include "flexiapi/config.hh"
 #endif
 
-#include "flexisip.hh"
+#ifdef ENABLE_SNMP
+#include "snmp/snmp-agent.hh"
+#endif
+
+#include "flexisip-conference.hh"
 
 #include "flexisip/configmanager.hh"
 #include "utils/pipe.hh"
@@ -113,13 +96,12 @@
 #include "utils/transport/http/http2client.hh"
 
 using namespace std;
+using namespace flexisip_conference;
 using namespace flexisip;
-
-#define ENABLE_SERVICE_SERVERS ENABLE_PRESENCE || ENABLE_CONFERENCE || ENABLE_B2BUA || ENABLE_VOICEMAIL
 
 static int run = 1;
 static shared_ptr<sofiasip::SuRoot> root{};
-static constexpr string_view kLogPrefix{"Flexisip"};
+static constexpr string_view kLogPrefix{"Flexisip-conference"};
 
 /*
  * Get the identifier of the current thread.
@@ -162,18 +144,6 @@ static void sofiaLogHandler(void*, const char* fmt, va_list ap) {
 }
 
 static map<msg_t*, string> msg_map;
-
-static void flexisip_msg_create(msg_t* msg) {
-	msg_map[msg] = "";
-	LOGD_CTX(kLogPrefix) << "New <-> msg " << msg;
-}
-
-static void flexisip_msg_destroy(msg_t* msg) {
-	auto it = msg_map.find(msg);
-	if (it != msg_map.end()) {
-		msg_map.erase(it);
-	}
-}
 
 static void dump_remaining_msgs() {
 	LOGD_CTX(kLogPrefix) << "### Remaining messages: " << msg_map.size();
@@ -298,10 +268,6 @@ static void depthFirstSearch(string& path, const GenericEntry* config, list<stri
 static void dump_config(
     ConfigManager& cfg, const string& dump_cfg_part, bool with_experimental, bool dumpDefault, const string& format) {
 	cfg.applyOverrides(true);
-	auto* pluginsDirEntry = cfg.getGlobal()->get<ConfigString>("plugins-dir");
-	if (pluginsDirEntry->get().empty()) {
-		pluginsDirEntry->set(DEFAULT_PLUGINS_DIR);
-	}
 
 	auto* rootStruct = cfg.getEditableRoot();
 	if (dump_cfg_part != "all") {
@@ -356,49 +322,20 @@ static void list_sections(ConfigManager& cfg, bool moduleOnly = false) {
 	}
 }
 
-static const string
-getFunctionName(bool startProxy, bool startPresence, bool startConference, bool regEvent, bool b2bua, bool voicemail) {
-	string functions;
-	if (startProxy) functions = "proxy";
-	if (startPresence) functions += ((functions.empty()) ? "" : "+") + string("presence");
-	if (startConference) functions += ((functions.empty()) ? "" : "+") + string("conference");
-	if (regEvent) functions += ((functions.empty()) ? "" : "+") + string("regevent");
-	if (b2bua) functions += ((functions.empty()) ? "" : "+") + string("b2bua");
-	if (voicemail) functions += ((functions.empty()) ? "" : "+") + string("voicemail");
-
-	return (functions.empty()) ? "none" : functions;
-}
-
 static string version() {
 	stringstream version{};
 	vector<string_view> options{};
-	version << FLEXISIP_GIT_VERSION << " (sofia-sip: " << SOFIA_SIP_VERSION << ")";
+	version << FLEXISIP_CONFERENCE_GIT_VERSION << " (sofia-sip: " << SOFIA_SIP_VERSION << ")";
 
 #if ENABLE_SNMP
 	options.emplace_back("SNMP");
 #endif
-#if ENABLE_TRANSCODER
-	options.emplace_back("Transcoder");
-#endif
 #if ENABLE_REDIS
 	options.emplace_back("Redis");
 #endif
-#if ENABLE_SOCI
-	options.emplace_back("Soci");
-#endif
-#if ENABLE_PRESENCE
-	options.emplace_back("Presence");
-#endif
-#if ENABLE_CONFERENCE
-	options.emplace_back("Conference");
-	options.emplace_back("RegEvent");
-#endif
-#ifdef ENABLE_B2BUA
-	options.emplace_back("B2BUA");
-#endif
-#ifdef ENABLE_VOICEMAIL
-	options.emplace_back("Voicemail");
-#endif
+options.emplace_back("Soci");
+options.emplace_back("Conference");
+
 
 	if (!options.empty()) version << " compiled with " << string_utils::join(options, 0, " - ");
 	return version.str();
@@ -419,30 +356,21 @@ static string getPkcsPassphrase(TCLAP::ValueArg<string>& pkcsFile) {
 	return passphrase;
 }
 
-int flexisip::main(int argc, const char* argv[]) {
+int flexisip_conference::main(int argc, const char* argv[]) {
 	int errcode = EXIT_SUCCESS;
 
 	TCLAP::CmdLine cmd("", ' ', version());
 	// TCLAP executes exit() when processing ExitException, so deactivate exceptions management.
 	cmd.setExceptionHandling(false);
 	TCLAP::ValueArg<string> functionName("", "server",
-	                                     "Server to execute: 'proxy',"
-#if ENABLE_PRESENCE
-	                                     " 'presence',"
-#endif
+	                                     "Server to execute: "
 #if ENABLE_CONFERENCE
-	                                     " 'regevent', 'conference',"
-#endif
-#ifdef ENABLE_B2BUA
-	                                     " 'b2bua',"
-#endif
-#ifdef ENABLE_VOICEMAIL
-	                                     " 'voicemail',"
+	                                     "'conference',"
 #endif
 	                                     " or 'all'.",
 	                                     TCLAP::ValueArgOptional, "", "server function", cmd);
 
-#define DEFAULT_CONFIG_FILE CONFIG_DIR "/flexisip.conf"
+#define DEFAULT_CONFIG_FILE CONFIG_DIR "/flexisip-conference.conf"
 
 	// clang-format off
 
@@ -467,10 +395,7 @@ int flexisip::main(int argc, const char* argv[]) {
                                                                        "configuration of a specific module.",
                                                                        TCLAP::ValueArgOptional, "", "all", cmd);
 	TCLAP::SwitchArg               dumpAll("",  "dump-all-default",    "Dump all default configurations in the standard "
-                                                                       "output (equivalent to '--dump-default all'). "
-                                                                       "This option may be combined with "
-                                                                       "'--set global/plugins=<plugin_list>' to also "
-                                                                       "generate the settings of listed plugins.",
+                                                                       "output (equivalent to '--dump-default all'). ",
                                                                        cmd);
 	TCLAP::ValueArg<string>     dumpFormat("",  "dump-format",		   "Output format of configuration dump "
                                                                        "(default: 'file'). Possible values: 'file', "
@@ -604,8 +529,8 @@ int flexisip::main(int argc, const char* argv[]) {
 	              rewriteConf ? ConfigManager::OnInvalidItem::Continue : ConfigManager::OnInvalidItem::Throw) == -1) {
 		throw BadConfiguration{
 		    "No configuration file found at '" + configFile.getValue() +
-		        "'. A default 'flexisip.conf' file should be installed in '" + CONFIG_DIR +
-		        "'. Please edit it and restart flexisip when ready. Alternatively, a default configuration file can be "
+		        "'. A default 'flexisip-conference.conf' file should be installed in '" + CONFIG_DIR +
+		        "'. Please edit it and restart flexisip-conference when ready. Alternatively, a default configuration file can be "
 		        "generated using '--dump-default all'.",
 		};
 	}
@@ -623,70 +548,6 @@ int flexisip::main(int argc, const char* argv[]) {
 
 	const auto* globalCfg = cfg->getGlobal();
 	bool enableCoreDumps = globalCfg->get<ConfigBoolean>("dump-corefiles")->read();
-
-	bool startProxy = false;
-	bool startPresence = false;
-	bool startConference = false;
-	bool startRegEvent = false;
-	bool startB2bua = false;
-	bool startVoicemail = false;
-
-	if (functionName.getValue() == "proxy") {
-		startProxy = true;
-	} else if (functionName.getValue() == "presence") {
-		startPresence = true;
-#ifndef ENABLE_PRESENCE
-		throw ExitFailure{"Flexisip was compiled without presence server extension"};
-#endif
-	} else if (functionName.getValue() == "conference") {
-		startConference = true;
-#ifndef ENABLE_CONFERENCE
-		throw ExitFailure{"Flexisip was compiled without conference server extension"};
-#endif
-	} else if (functionName.getValue() == "regevent") {
-		startRegEvent = true;
-#ifndef ENABLE_CONFERENCE
-		throw ExitFailure{"Flexisip was compiled without regevent server extension"};
-#endif
-	} else if (functionName.getValue() == "b2bua") {
-		startB2bua = true;
-#ifndef ENABLE_B2BUA
-		throw ExitFailure{"Flexisip was compiled without B2BUA server extension"};
-#endif
-	} else if (functionName.getValue() == "voicemail") {
-		startVoicemail = true;
-#ifndef ENABLE_VOICEMAIL
-		throw ExitFailure{"Flexisip was compiled without Voicemail server extension"};
-#endif
-	} else if (functionName.getValue() == "all") {
-		startPresence = true;
-		startProxy = true;
-		startConference = true;
-		startRegEvent = true;
-		startB2bua = true;
-	} else if (functionName.getValue().empty()) {
-		const auto* defaultServers = globalCfg->get<ConfigStringList>("default-servers");
-		if (defaultServers->contains("proxy")) {
-			startProxy = true;
-		}
-		if (defaultServers->contains("presence")) {
-			startPresence = true;
-		}
-		if (defaultServers->contains("conference")) {
-			startConference = true;
-		}
-		if (defaultServers->contains("regevent")) {
-			startRegEvent = true;
-		}
-		if (defaultServers->contains("b2bua")) {
-			startB2bua = true;
-		}
-		if (!startPresence && !startProxy && !startConference && !startB2bua) {
-			throw BadConfigurationValue{defaultServers};
-		}
-	} else {
-		throw BadConfiguration{"unknown server type '" + functionName.getValue() + "'"};
-	}
 
 	ortp_init();
 	su_init();
@@ -729,8 +590,7 @@ int flexisip::main(int argc, const char* argv[]) {
 	// Read the pkcs passphrase if any from the FIFO, and keep it in memory.
 	auto passphrase = getPkcsPassphrase(pkcsFile);
 
-	string fName =
-	    getFunctionName(startProxy, startPresence, startConference, startRegEvent, startB2bua, startVoicemail);
+	string fName = "conference";
 
 	makePidFile(pidFile.getValue());
 
@@ -747,7 +607,7 @@ int flexisip::main(int argc, const char* argv[]) {
 	    .root = root,
 	});
 
-	logger.message(kLogPrefix, __func__, "Starting Flexisip-" + fName + " server [version: " FLEXISIP_GIT_VERSION "]");
+	logger.message(kLogPrefix, __func__, "Starting Flexisip-" + fName + " server [version: " FLEXISIP_CONFERENCE_GIT_VERSION "]");
 
 	logger.setContextualFilter(globalCfg->get<ConfigString>("contextual-log-filter")->read());
 	logger.setContextualLevel(
@@ -773,7 +633,7 @@ int flexisip::main(int argc, const char* argv[]) {
 		memoryWatcher = make_unique<process_monitoring::MemoryWatcher>(root, memoryCheckInterval);
 #endif
 
-	// Create an Agent in all cases because it will declare configuration items that are necessary for presence server.
+	// Create an Agent in all cases because it will declare configuration items that are necessary.
 	const auto authDb = std::make_shared<AuthDb>(cfg);
 	const auto registrarDb = std::make_shared<RegistrarDb>(root, cfg);
 	auto agent = make_shared<Agent>(root, cfg, authDb, registrarDb);
@@ -782,97 +642,22 @@ int flexisip::main(int argc, const char* argv[]) {
 #ifdef ENABLE_SNMP
 	shared_ptr<SnmpAgent> snmpAgent{};
 #endif
-#if ENABLE_SERVICE_SERVERS
-	vector<shared_ptr<ServiceServer>> serviceServers{};
-#endif
-	unique_ptr<StunServer> stunServer{};
-	unique_ptr<CommandLineInterface> proxyCli{};
-	if (startProxy) {
-#if ENABLE_FLEXIAPI
-		// Create the HTTP Client that should be used for the FlexiAPI
-		auto flexiApiClient = flexiapi::createClient(cfg, *agent->getRoot());
-		agent->setFlexiApiClient(flexiApiClient);
-#endif
-		agent->start(transportsArg.getValue(), passphrase);
 #ifdef ENABLE_SNMP
-		if (globalCfg->get<ConfigBoolean>("enable-snmp")->read()) {
-			snmpAgent = make_shared<SnmpAgent>(cfg, oset);
-			snmpAgent->sendNotification("Flexisip " + fName + "-server starting");
-			agent->setNotifier(snmpAgent);
-		}
+	if (globalCfg->get<ConfigBoolean>("enable-snmp")->read()) {
+		snmpAgent = make_shared<SnmpAgent>(cfg, oset);
+		snmpAgent->sendNotification("Flexisip " + fName + "-server starting");
+		agent->setNotifier(snmpAgent);
+	}
 #endif
-
-		// Using default + overrides.
-		cfg->applyOverrides(true);
-
-		const auto* stunServerConfig = rootCfg->get<GenericStruct>("stun-server");
-		if (stunServerConfig->get<ConfigBoolean>("enabled")->read()) {
-			stunServer = make_unique<StunServer>(stunServerConfig->get<ConfigInt>("port")->read());
-			stunServer->start(stunServerConfig->get<ConfigString>("bind-address")->read());
-		}
-
-		proxyCli = make_unique<ProxyCommandLineInterface>(cfg, agent);
-		proxyCli->start();
-
-		if (trackAllocs) msg_set_callbacks(flexisip_msg_create, flexisip_msg_destroy);
-	}
-
-#ifdef ENABLE_PRESENCE
-	unique_ptr<CommandLineInterface> presenceCli{};
-#endif
-	if (startPresence) {
-#ifdef ENABLE_PRESENCE
-		auto presenceServer = make_shared<PresenceServer>(root, cfg);
-		if (rootCfg->get<GenericStruct>("presence-server")->get<ConfigBoolean>("long-term-enabled")->read()) {
-			presenceServer->enableLongTermPresence(authDb, registrarDb);
-		}
-		presenceServer->init();
-
-		presenceCli = make_unique<CommandLineInterface>("presence", cfg, root);
-		presenceCli->start();
-
-		serviceServers.emplace_back(std::move(presenceServer));
-#endif
-	}
-
-	if (startConference) {
-#ifdef ENABLE_CONFERENCE
-		auto conferenceServer = make_shared<ConferenceServer>(agent->getPreferredRoute(), root, cfg, registrarDb);
-		conferenceServer->init();
-		serviceServers.emplace_back(std::move(conferenceServer));
-#endif // ENABLE_CONFERENCE
-	}
-
-	if (startRegEvent) {
-#ifdef ENABLE_CONFERENCE
-		auto regEventServer = make_unique<RegistrationEvent::Server>(root, cfg, registrarDb);
-		regEventServer->init();
-		serviceServers.emplace_back(std::move(regEventServer));
-#endif // ENABLE_CONFERENCE
-	}
-
-	if (startB2bua) {
-#if ENABLE_B2BUA
-		auto b2buaServer = make_shared<B2buaServer>(root, cfg);
-		b2buaServer->init();
-		serviceServers.emplace_back(std::move(b2buaServer));
-#endif // ENABLE_B2BUA
-	}
-
-	if (startVoicemail) {
-#if ENABLE_VOICEMAIL
-		auto voicemailServer = make_shared<VoicemailServer>(root, cfg);
-		voicemailServer->init();
-		serviceServers.emplace_back(std::move(voicemailServer));
-#endif // ENABLE_B2BUA
-	}
+	auto conferenceServer = make_shared<ConferenceServer>(agent->getPreferredRoute(), root, cfg, registrarDb);
+	conferenceServer->init();
 
 #ifdef ENABLE_SYSTEMD
 	// Notify systemd that Flexisip has started successfully.
 	int rc = sd_notify(0, "READY=1");
 	if (rc < 0) {
-		LOGE_CTX(kLogPrefix) << "Flexisip startup: systemd sd_notify failed (" << rc << ")";
-		throw ExitFailure{"Could not notify systemd that Flexisip has started successfully"};
+		LOGE_CTX(kLogPrefix) << "Flexisip-conference startup: systemd sd_notify failed (" << rc << ")";
+		throw ExitFailure{"Could not notify systemd that Flexisip-conference has started successfully"};
 	}
 	// Start the watchdog timer for the main loop keep-alive ping.
 	auto watchdogNotifyInterval =
@@ -884,20 +669,13 @@ int flexisip::main(int argc, const char* argv[]) {
 
 	agent->unloadConfig();
 	agent.reset();
-#ifdef ENABLE_PRESENCE
-	presenceCli.reset();
-#endif // ENABLE_PRESENCE
 
-#if ENABLE_SERVICE_SERVERS
 	auto cleanupTasks = std::vector<std::unique_ptr<AsyncCleanup>>();
-	cleanupTasks.reserve(serviceServers.size());
-	for (const auto& server : serviceServers) {
-		if (!server) continue;
-		auto cleanup = server->stop();
-		if (!cleanup) continue;
-		cleanupTasks.emplace_back(std::move(cleanup));
+	if (conferenceServer) {
+		if (auto cleanup = conferenceServer->stop())
+			cleanupTasks.emplace_back(std::move(cleanup));
 	}
-	serviceServers.clear();
+
 	constexpr auto timeout = 5s;
 	const auto deadline = std::chrono::system_clock::now() + timeout;
 	while (true) {
@@ -913,11 +691,9 @@ int flexisip::main(int argc, const char* argv[]) {
 			break;
 		}
 	}
-#endif
 
 	logger.message(kLogPrefix, __func__, "Exiting Flexisip-" + fName + " server normally");
 
-	if (stunServer) stunServer->stop();
 	if (trackAllocs) dump_remaining_msgs();
 #ifdef ENABLE_SNMP
 	if (globalCfg->get<ConfigBoolean>("enable-snmp")->read() && snmpAgent) {

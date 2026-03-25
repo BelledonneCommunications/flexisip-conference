@@ -20,14 +20,9 @@
 
 #include <optional>
 
-#include "exceptions/exit.hh"
 #include "utils/pipe.hh"
 
-#ifdef HAVE_CONFIG_H
-#include "flexisip-config.h"
-#endif
-
-namespace flexisip {
+namespace flexisip_conference {
 
 int main(int argc, const char* argv[]);
 

@@ -23,13 +23,13 @@
 #include "bctoolbox/tester.h"
 #include "lib/nlohmann-json-3-11-2/json.hpp"
 
+#include "bc-utils.hh"
+#include "cli-helper.hh"
 #include "flexisip/logmanager.hh"
-#include "main/flexisip.hh"
-#include "tester.hh"
-#include "utils/cli-helper.hh"
-#include "utils/test-patterns/test.hh"
-#include "utils/test-suite.hh"
-#include "utils/tmp-dir.hh"
+#include "main/flexisip-conference.hh"
+#include "test-patterns/test.hh"
+#include "test-suite.hh"
+#include "tmp-dir.hh"
 
 using namespace std;
 
@@ -39,7 +39,7 @@ constexpr auto step = 100ms;
 
 class ProcessusHandler {
 public:
-	explicit ProcessusHandler(pid_t pid) : mPid(pid) {};
+	explicit ProcessusHandler(pid_t pid) : mPid(pid){};
 
 	~ProcessusHandler() {
 		kill();
@@ -90,30 +90,26 @@ nlohmann::json deserialize(const string& json) {
 }
 
 /**
- * Test the main function of flexisip server
+ * Test the main function of flexisip-conference server
  *
- * Start a flexisip server with all service types activated then check that all service are properly initialized.
+ * Start a flexisip conference server with all service types activated then check that all service are properly initialized.
  * Stop the server and check that the program exit cleanly.
  *
  */
 void callAndStopMain() {
 	auto dir = TmpDir(__func__);
-	auto confFilePath = dir.path() / "flexisip.conf";
+	auto confFilePath = dir.path() / "flexisip-conference.conf";
 	ofstream(confFilePath) << "[global]" << '\n'
 	                       << "enable-snmp=true" << '\n'
-#ifdef ENABLE_CONFERENCE
+
 	                       << "[conference-server]" << '\n'
 	                       << "database-backend=sqlite3" << '\n'
-	                       << "database-connection-string=\":memory:\"" << '\n'
-#endif
-	                       << "[presence-server]" << '\n'
-	                       << "long-term-enabled=true" << '\n';
+	                       << "database-connection-string=\":memory:\"" << '\n';
 
 	vector<const char*> args{
-	    "flexisip",
+	    "flexisip-conference",
 	    "-c",
 	    confFilePath.c_str(),
-	    "--server all",
 	};
 
 	auto childPid = ::fork();
@@ -126,7 +122,7 @@ void callAndStopMain() {
 		// if not, it could destruct objects of the parent process.
 		int returnValue = EXIT_FAILURE;
 		try {
-			returnValue = flexisip::main(args.size(), args.data());
+			returnValue = flexisip_conference::main(args.size(), args.data());
 		} catch (const exception& e) {
 			SLOGE << "Unexpected exception while running main: " << e.what();
 		}
@@ -135,19 +131,6 @@ void callAndStopMain() {
 
 	// Short wait to ensure that main loop starts.
 	this_thread::sleep_for(1s);
-
-	// Sent a valid request with cli to check that the server runs.
-	{
-		const auto& aor = "sip:user@flexisip.example.org"s;
-		const auto& uuid = "unique-identifier-1"s;
-		const auto& contact = "sip:user@localhost"s;
-		auto cmd = "REGISTRAR_UPSERT " + aor + " " + contact + " 5 " + uuid + " 2>&1"s;
-		BcAssert asserter{};
-		auto contacts = deserialize(CliHelper::callScriptForPid(cmd, EX_OK, asserter, to_string(childPid)))["contacts"];
-		BC_HARD_ASSERT_CPP_EQUAL(contacts.size(), 1);
-		BC_ASSERT_CPP_EQUAL(contacts[0]["contact"], contact);
-		BC_ASSERT_CPP_EQUAL(contacts[0]["unique-id"], uuid);
-	}
 
 	// Stop flexisip execution
 	BC_HARD_ASSERT_CPP_EQUAL(::kill(childPid, SIGINT), 0);

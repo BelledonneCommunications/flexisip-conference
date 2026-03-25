@@ -61,7 +61,7 @@ job-debian13-unit-test:
     when: always
     paths:
       - default.profdata
-      - work/lib/libflexisip.so
+      - work/lib/libflexisip-conference.so
       - ${LOGS_DIR}/*
 
 debian13-coverage:

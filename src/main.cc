@@ -20,25 +20,24 @@
 #include <tclap/CmdLine.h>
 
 #include "exceptions/exit.hh"
-#include "main/flexisip.hh"
+#include "main/flexisip-conference.hh"
 
 using namespace std;
-using namespace flexisip;
 
 static constexpr string_view kLogPrefix{"Flexisip"};
 
 int main(int argc, const char* argv[]) {
 	try {
-		return flexisip::main(argc, argv);
+		return flexisip_conference::main(argc, argv);
 	} catch (const TCLAP::ExitException& exception) {
 		// Exception raised when the program failed to correctly parse command line options.
 		return exception.getExitStatus();
-	} catch (const ExitSuccess& exception) {
+	} catch (const flexisip::ExitSuccess& exception) {
 		if (exception.what() != nullptr && exception.what()[0] != '\0')
 			LOGD_CTX(kLogPrefix) << "Exit success: " << exception.what();
 
 		return EXIT_SUCCESS;
-	} catch (const Exit& exception) {
+	} catch (const flexisip::Exit& exception) {
 		if (exception.what() != nullptr && exception.what()[0] != '\0')
 			LOGE_CTX(kLogPrefix) << "Exit failure: " << exception.what();
 

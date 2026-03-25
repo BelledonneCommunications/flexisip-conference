@@ -13,14 +13,12 @@ in
 { pkgs ? import pinned_nixpkgs { }
 , additionalInputs ? (_: [ ])
 , enableUnitTests ? false
-, enableB2bua ? false
-, enableOpenId ? false
 , nghttp2 ? pkgs.nghttp2
 , ...
 }:
 
 let
-  dependencies = import ./dependencies.nix { inherit pkgs enableUnitTests enableB2bua enableOpenId nghttp2; };
+  dependencies = import ./dependencies.nix { inherit pkgs enableUnitTests nghttp2; };
 in
 
 pkgs.mkShell.override { stdenv = pkgs.gcc13Stdenv; } {

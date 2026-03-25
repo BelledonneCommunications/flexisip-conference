@@ -1,16 +1,9 @@
-# Flexisip
+# Flexisip-conference
 
-Flexisip is a comprehensive, modular and scalable SIP server suite written in C++17. It offers a wide range of
-functionalities, including:
+Flexisip is a comprehensive, modular and scalable SIP server suite written in C++20. This repository contains the conference server of the suite.
+For other services, see [Flexisip](https://giblab.linphone.org/BC/public/flexisip).
 
-* **Proxy Server**: acts as a central hub for routing SIP messages.
-    * **Push Notification Service**: delivers SIP notifications (in-calls, messages) to mobile devices even when the app
-      is not actively running.
-* **Presence Server**: enables users to see the online status of others and their availability for calls.
-* **Conference Server**: enables group voice and video calls.
-* **Back-to-Back User Agent (B2BUA) Server**: enables caller identity translation, media-level transcoding and SIP
-  trunking.
-* **RegEvent Server**: notify tier domains of user registration.
+The conference server enables group voice and video calls as well as instant messaging in group chats.
 
 ## Deployment and Applications:
 
@@ -37,19 +30,18 @@ Flexisip is dual licensed, and can be licensed and distributed:
 
 # Dependencies
 
-| Dependency      | Description                                                                                                                           | Mandatory | Enabled by default |
-|:----------------|:--------------------------------------------------------------------------------------------------------------------------------------|:---------:|:------------------:|
-| OpenSSL         | TLS stack.                                                                                                                            |     X     |                    |
-| LibNgHttp2      | HTTP2 stack.                                                                                                                          |     X     |                    |
-| libsrtp2        | Secure RTP (SRTP) and UST Reference Implementations                                                                                   |     X     |                    |
-| SQLite3         | Library for handling SQlite3 file                                                                                                     |     X     |                    |
-| libmysql-client | Client library for MySQL database.                                                                                                    |     X     |                    |
-| Hiredis         | Redis DB client library, used for Registrar DB and communications between Flexisip instances of a same cluster. (-DENABLE\_REDIS=YES) |           |         X          |
-| NetSNMP         | SNMP library, used for SNMP support. (-DENABME\_SNMP=YES)                                                                             |           |         X          |
-| XercesC         | XML parser. (-DENABLE\_PRESENCE=YES)                                                                                                  |           |         X          |
-| jsoncpp         | JSON parsing and writing (-DENABLE\_B2BUA=YES)                                                                                        |           |         X          |
-| cpp-jwt         | JSON Web Token support (-DENABLE\_OPENID\_CONNECT=YES)                                                                                |           |         X          |
-| libsystemd      | Library to interact with SystemD                                                                                                      |           |         X          |
+| Dependency      | Description                                                                                                     | Mandatory | Enabled by default |
+|:----------------|:----------------------------------------------------------------------------------------------------------------|:---------:|:------------------:|
+| OpenSSL         | TLS stack.                                                                                                      |     X     |                    |
+| LibNgHttp2      | HTTP2 stack.                                                                                                    |     X     |                    |
+| libsrtp2        | Secure RTP (SRTP) and UST Reference Implementations                                                             |     X     |                    |
+| SQLite3         | Library for handling SQlite3 file                                                                               |     X     |                    |
+| libmysql-client | Client library for MySQL database.                                                                              |     X     |                    |
+| Hiredis         | Redis DB client library, used for Registrar DB and communications between Flexisip instances of a same cluster. |           |         X          |
+| NetSNMP         | SNMP library, used for SNMP support. (-DENABME\_SNMP=YES)                                                       |           |         X          |
+| XercesC         | XML parser.                                                                                                     |           |         X          |
+| jsoncpp         | JSON parsing and writing.                                                                                       |           |         X          |
+| libsystemd      | Library to interact with SystemD                                                                                |           |         X          |
 
 # Compilation
 
@@ -71,7 +63,7 @@ Create a build directory and configure the project:
 ```bash
 mkdir ./build
 cmake -S . -B ./build
-make -C ./build -j<njobs>
+cmake --build ./build -j<njobs>
 ```
 
 ### Custom
@@ -79,26 +71,26 @@ When built outside a git repository, you have to manually mention Flexisip and L
 
 ```bash
 mkdir ./build
-cmake -S . -B ./build -DFLEXISIP_VERSION=<version> -DLINPHONESDK_VERSION=<version>
-make -C ./build -j<njobs>
+cmake -S . -B ./build -DFLEXISIP_CONFERENCE_VERSION=<version> -DLINPHONESDK_VERSION=<version>
+cmake --build ./build -j<njobs>
 ```
 
 ### Some tips
 
 Check *CMakeLists.txt* to know the list of the available options and their default value. To change an option, invoke
 *CMake* again and specify the option you need to change.
-For instance, here is how to disable the presence server feature:
+For instance, here is how to disable the build of unit tests:
 
 ```bash
-cmake ./build -DENABLE_PRESENCE=OFF
-make -C ./build -j<njobs>
+cmake ./build -DENABLE_UNIT_TESTS=OFF
+cmake --build ./build -j<njobs>
 ```
 
 You may also use *ccmake* or *cmake-gui* utilities to interactively configure the project:
 
 ```bash
 ccmake ./build
-make -C ./build -j<njobs>
+cmake --build ./build -j<njobs>
 ```
 
 ## Building RPM or DEB packages
@@ -107,17 +99,18 @@ This procedure will help you generate a unique RPM package containing Flexisip, 
 corresponding package for debug symbols.
 The following options are relevant for packaging:
 
-| Option                          | Description                                                                |
-|:--------------------------------|:---------------------------------------------------------------------------|
-| `CMAKE_INSTALL_PREFIX`          | Prefix path where the package will install the files.                      |
-| `SYSCONF_INSTALL_DIR`           | Directory where Flexisip expects to find its default configuration.        |
-| `FLEXISIP_SYSTEMD_INSTALL_DIR`  | Directory where systemd units will be installed.                           |
-| `CMAKE_BUILD_TYPE`              | Set it to “RelWithDebInfo” to have debug symbols in the debuginfo package. |
-| `CPACK_GENERATOR`               | Package type: “RPM” or “DEB”.                                              |
+| Option                         | Description                                                                                                                                     |
+|:-------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
+| `CMAKE_INSTALL_PREFIX`         | Prefix path where the package will install the files.                                                                                           |
+| `SYSCONF_INSTALL_DIR`          | Directory where Flexisip expects to find its default configuration. If not specified, it follows LFH rules depending on `CMAKE_INSTALL_PREFIX`. |
+| `FLEXISIP_SYSTEMD_INSTALL_DIR` | Directory where systemd units will be installed.                                                                                                |
+| `LOGROTATE_DIR`                | Directory where the logrotate file will be installed.                                                                                           |
+| `CMAKE_BUILD_TYPE`             | Set it to “RelWithDebInfo” to have debug symbols in the debuginfo package.                                                                      |
+| `CPACK_GENERATOR`              | Package type: “RPM” or “DEB”.                                                                                                                   |
 
 ```bash
-cmake ./build -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSYSCONF_INSTALL_DIR=/etc -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DCPACK_GENERATOR=RPM
-make -C ./build -j<njobs> package
+cmake ./build -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications/flexisip-conference -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DLOGROTATE_DIR=/etc/logrotate.d -DCPACK_GENERATOR=RPM
+cmake --build ./build -j<njobs> package
 ```
 
 Packages are now available in the `./build` directory.
@@ -154,7 +147,7 @@ other installed tooling. It is just an additional, **optional** way to build fle
 ```sh
 CC=gcc CXX=g++ BUILD_DIR_NAME="build" cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S . -B ./$BUILD_DIR_NAME -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="$PWD/$BUILD_DIR_NAME/install" -DENABLE_UNIT_TESTS=ON -DENABLE_STRICT_LINPHONESDK=OFF -DINTERNAL_JSONCPP=OFF
 cd build
-clear && cmake --build . --target install && LSAN_OPTIONS="suppressions=../sanitizer_ignore.txt" bin/flexisip_tester --resource-dir "../tester/" --verbose
+clear && cmake --build . --target install && LSAN_OPTIONS="suppressions=../sanitizer_ignore.txt" bin/flexisip_conference_tester --verbose
 ```
 
 ### Note to maintainers
@@ -168,13 +161,5 @@ All `.nix` files should be formatted with `nixpkgs-fmt`.
 # Configuration
 
 Flexisip needs a configuration file to run correctly.
-Use `./flexisip --dump-all-default > flexisip.conf` to generate a documented default configuration file.
-
-# Developer notes
-
-With sofia-sip, you can choose between `msg_dup()` and `msg_copy()`, `sip_from_dup()` and `sip_from_copy()`, _etc_.
-The difference isn't well documented in the sofia-sip documentation, but it is important to understand that:
-
-- `*_dup()` makes a copy of the structure plus all included strings inside (deep copy).
-- `*_copy()` just makes a copy of the structure, not the strings pointed by it (shallow copy). **These functions are
-  dangerous**; use `*_dup()` versions in doubt.
+Use `./flexisip-conference --dump-all-default > flexisip-conference.conf` to generate a documented default configuration
+file.

@@ -3,8 +3,6 @@ args@{ pkgs ? import <nixpkgs> { }, nghttp2 ? pkgs.nghttp2, ... }:
 import ./nix/base.nix ({
   inherit pkgs nghttp2;
   enableUnitTests = true;
-  enableB2bua = true;
-  enableOpenId = true;
   additionalInputs = ps: with ps; [
     nixpkgs-fmt
     ccache

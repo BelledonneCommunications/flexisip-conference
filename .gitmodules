@@ -1,9 +1,6 @@
-[submodule "submodules/externals/sofia-sip"]
-	path = submodules/externals/sofia-sip
-	url = https://gitlab.linphone.org/BC/public/external/sofia-sip.git
-[submodule "submodules/externals/hiredis"]
-	path = submodules/externals/hiredis
-	url = https://gitlab.linphone.org/BC/public/external/hiredis.git
 [submodule "linphone-sdk"]
 	path = linphone-sdk
 	url = https://gitlab.linphone.org/BC/public/linphone-sdk.git
+[submodule "flexisip"]
+	path = flexisip
+	url = https://gitlab.linphone.org/BC/public/flexisip.git

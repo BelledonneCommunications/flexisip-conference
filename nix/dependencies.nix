@@ -1,7 +1,5 @@
 { pkgs
 , enableUnitTests
-, enableB2bua
-, enableOpenId
 , nghttp2 ? pkgs.nghttp2
 }:
 
@@ -39,14 +37,4 @@ with pkgs;
   boost
   redis
   mariadb
-]
-++ optionals enableB2bua [
-  jsoncpp
-]
-++ optionals (enableB2bua && enableUnitTests) [
-  libvpx # We need a video codec for video calls to establish successfully
-]
-++ optionals enableOpenId [
-  cpp-jwt
-  nlohmann_json
 ]

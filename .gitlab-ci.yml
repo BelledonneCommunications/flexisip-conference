@@ -13,7 +13,7 @@ variables:
   # For build on MacOS
   DEFAULT_MACOS_CMAKE_OPTIONS: '-DPython3_ROOT_DIR=/opt/bc/pip-packages/'
   # For packaging, deb and rpm
-  DEFAULT_PACKAGING_CMAKE_OPTIONS: '-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications -DSYSCONF_INSTALL_DIR=/etc -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DENABLE_G729=ON'
+  DEFAULT_PACKAGING_CMAKE_OPTIONS: '-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications/flexisip-conference -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DLOGROTATE_DIR=/etc/logrotate.d -DENABLE_G729=ON'
 
   # Docker image version
   ARCHLINUX_IMAGE_VERSION: 20251203_add_curl
@@ -21,7 +21,6 @@ variables:
   ROCKY_9_IMAGE_VERSION: 20260227_add_systemd
   DEBIAN_12_IMAGE_VERSION: 20260227_add_systemd
   DEBIAN_13_IMAGE_VERSION: 20260227_add_systemd
-  MINIMAL_IMAGE_VERSION: 20260227_add_systemd
   UBUNTU_22_04_IMAGE_VERSION: 20260227_add_systemd
   UBUNTU_24_04_IMAGE_VERSION: 20260227_add_systemd
 
@@ -52,7 +51,8 @@ before_script:
 #################################################
 
 include:
-  - '.gitlab-ci-files/rules.yml'
+  - project: 'BC/public/flexisip'
+    file: '.gitlab-ci-files/rules.yml'
   - '.gitlab-ci-files/scripts.yml'
   - '.gitlab-ci-files/job-linux.yml'
   - '.gitlab-ci-files/job-linux-archlinux.yml'
@@ -60,7 +60,6 @@ include:
   - '.gitlab-ci-files/job-linux-rocky9.yml'
   - '.gitlab-ci-files/job-linux-debian12.yml'
   - '.gitlab-ci-files/job-linux-debian13.yml'
-  - '.gitlab-ci-files/job-linux-minimal.yml'
   - '.gitlab-ci-files/job-linux-ubuntu-22-04.yml'
   - '.gitlab-ci-files/job-linux-ubuntu-24-04.yml'
   - '.gitlab-ci-files/job-macosx.yml'

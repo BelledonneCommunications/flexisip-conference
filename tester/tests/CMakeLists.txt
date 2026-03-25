@@ -20,21 +20,32 @@
 #
 ############################################################################
 
-find_package(Threads REQUIRED)
-find_package(XercesC REQUIRED)
+add_executable(flexisip_conference_tester
+	conference/conference-server-tester.cc
+	conference/registration-subscription-tester.cc
+	eventlogs/writers/flexi-stats-event-log-writer-tester.cc
+	main-tester.cc
 
-# Some tests need SDK clients able to stream video (mostly those of the B2BUA).
-# Mediastreamer2 does not enforce any video codec, resulting in tests crashing at runtime.
-# We prefer to detect this at configure time, so we're enforcing VPX
-list(APPEND CMAKE_MODULE_PATH ${flexisip_SOURCE_DIR}/linphone-sdk/mediastreamer2/cmake/)
-find_package(VPX REQUIRED)
+	${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.cc ${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.hh
+)
 
-# Generate flexisip-tester-config.h
-set(FLEXISIP_ROOT_DIR "${CMAKE_SOURCE_DIR}")
-set(FLEXISIP_BIN_DIR "${CMAKE_BINARY_DIR}")
-set(flexisip_conference_tester_DATA_SRCDIR "${CMAKE_CURRENT_SOURCE_DIR}")
+if(HAS_GCC_BUG_105562)
+	set_source_files_properties(
+		eventlogs/writers/flexi-stats-event-log-writer-tester.cc
+		PROPERTIES COMPILE_OPTIONS "-Wno-error=maybe-uninitialized"
+	)
+endif()
 
-find_program(REDIS_SERVER_EXEC NAMES redis-server REQUIRED)
+# C++ 20 adds the support for char8_t which adds a lot of backward compatibility problems.
+# See: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r3.html
+# So for now disable it until we need it.
+list(APPEND CXX_BUILD_FLAGS "-fno-char8_t")
 
-add_subdirectory(utils)
-add_subdirectory(tests)
+target_compile_options(flexisip_conference_tester PRIVATE ${CPP_BUILD_FLAGS} ${CXX_BUILD_FLAGS})
+target_link_libraries(flexisip_conference_tester PRIVATE
+	OpenSSL::SSL
+	flexisip
+	flexisip-conference
+	flexisip_tester_utils
+	flexisip_conference_tester_utils
+)

@@ -1,6 +1,6 @@
 ############################################################################
 # LinphoneSDK.cmake
-# Copyright (C) 2010-2023 Belledonne Communications, Grenoble France
+# Copyright (C) 2010-2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -25,13 +25,8 @@
 ############################################################################
 
 function(add_linphonesdk)
-	if(ENABLE_TRANSCODER OR ENABLE_CONFERENCE OR ENABLE_B2BUA)
-		set(BUILD_MEDIASTREAMER2 ON)
-		set(ENABLE_ZRTP ON)
-	else()
-		set(BUILD_MEDIASTREAMER2 OFF)
-		set(ENABLE_ZRTP OFF)
-	endif()
+	set(BUILD_MEDIASTREAMER2 ON)
+	set(ENABLE_ZRTP ON)
 
 	if(ENABLE_EKT_SERVER)
 		set(ENABLE_NON_FREE_FEATURES ON)
@@ -43,19 +38,13 @@ function(add_linphonesdk)
 		set(ENABLE_PQCRYPTO OFF)
 	endif()
 
-	set(BUILD_SOCI ${SOCI_REQUIRED})
-	if(BUILD_SOCI)
-		set(BUILD_SOCI_BACKENDS "mysql;sqlite3")
-		if(ENABLE_SOCI_POSTGRESQL_BACKEND)
-			string(APPEND BUILD_SOCI_BACKENDS ";postgresql")
-		endif()
+	set(BUILD_SOCI_BACKENDS "mysql;sqlite3")
+	if(ENABLE_SOCI_POSTGRESQL_BACKEND)
+		string(APPEND BUILD_SOCI_BACKENDS ";postgresql")
 	endif()
 
-	if(ENABLE_PRESENCE OR ENABLE_MDNS OR ENABLE_CONFERENCE OR ENABLE_UNIT_TESTS)
-		set(BUILD_BELLESIP ON)
-	endif()
-
-	set(BUILD_LIBLINPHONE ${LIBLINPHONE_REQUIRED})
+	set(BUILD_BELLESIP ON)
+	set(BUILD_LIBLINPHONE ON)
 
 	# # Global SDK config
 	set(ENABLE_DOC OFF)
@@ -86,7 +75,7 @@ function(add_linphonesdk)
 	set(ENABLE_BV16 OFF)
 	set(ENABLE_CODEC2 OFF)
 	set(ENABLE_CSHARP_WRAPPER OFF)
-	set(ENABLE_CXX_WRAPPER ${BUILD_LIBLINPHONE})
+	set(ENABLE_CXX_WRAPPER ON})
 	set(ENABLE_DB_STORAGE ON)
 	set(ENABLE_DECAF ON)
 	set(ENABLE_FFMPEG OFF)
@@ -102,7 +91,7 @@ function(add_linphonesdk)
 	set(ENABLE_LDAP OFF)
 	set(ENABLE_LIBYUV OFF)
 	set(ENABLE_LIME OFF)
-	set(ENABLE_LIME_X3DH ${BUILD_LIBLINPHONE})
+	set(ENABLE_LIME_X3DH ON)
 
 	# ENABLE_MBEDTLS must be a cache variable because this option is declared by
 	# libsrtp2 project as cache variable instead of using option() command. That avoid Flexisip
@@ -125,44 +114,40 @@ function(add_linphonesdk)
 	set(ENABLE_TUNNEL OFF)
 	set(ENABLE_VCARD OFF)
 	set(ENABLE_VIDEO ON)
-	set(ENABLE_VPX ${BUILD_MEDIASTREAMER2})
+	set(ENABLE_VPX ON)
 	set(ENABLE_AV1 OFF)
 	set(ENABLE_WEBRTC_AEC OFF)
 	set(ENABLE_WEBRTC_VAD OFF)
 
 	set(BUILD_LIBSRTP2 ${INTERNAL_LIBSRTP2})
-	set(BUILD_MBEDTLS ${INTERNAL_MBEDTLS})
+	set(BUILD_MBEDTLS ON)
 
 	# BcToolbox specific config
 	set(ENABLE_DEFAULT_LOG_HANDLER OFF)
 
 	# BZRTP specific config
-	set(ENABLE_ZIDCACHE ${ENABLE_ZRTP})
+	set(ENABLE_ZIDCACHE ON)
 	set(ENABLE_EXPORTEDKEY_V1_0_RETROCOMPATIBILITY OFF)
 	set(ENABLE_GOCLEAR ON)
 	set(ENABLE_PQCRYPTO OFF)
 
-	if(BUILD_MEDIASTREAMER2)
-		# Mediastreamer specific config
-		set(ENABLE_BAUDOT OFF)
-		set(ENABLE_FIXED_POINT OFF)
-		set(ENABLE_PCAP OFF)
-		set(ENABLE_SCREENSHARING OFF)
-		set(ENABLE_SOUND OFF) # Disable all sound card backends.
-		set(ENABLE_V4L OFF) # Disable video capture
-		# Disable video rendering
-		set(ENABLE_GL OFF)
-		set(ENABLE_GLX OFF)
-		set(ENABLE_SDL OFF)
-		set(ENABLE_X11 OFF)
-		set(ENABLE_XV OFF)
-		set(ENABLE_RESAMPLE ON)
-	endif()
+	# Mediastreamer specific config
+	set(ENABLE_BAUDOT OFF)
+	set(ENABLE_FIXED_POINT OFF)
+	set(ENABLE_PCAP OFF)
+	set(ENABLE_SCREENSHARING OFF)
+	set(ENABLE_SOUND OFF) # Disable all sound card backends.
+	set(ENABLE_V4L OFF) # Disable video capture
+	# Disable video rendering
+	set(ENABLE_GL OFF)
+	set(ENABLE_GLX OFF)
+	set(ENABLE_SDL OFF)
+	set(ENABLE_X11 OFF)
+	set(ENABLE_XV OFF)
+	set(ENABLE_RESAMPLE ON)
 
-	if(BUILD_BELLESIP)
-		# Belle-sip specific config
-		set(ENABLE_RTP_MAP_ALWAYS_IN_SDP OFF)
-	endif()
+	# Belle-sip specific config
+	set(ENABLE_RTP_MAP_ALWAYS_IN_SDP OFF)
 
 	if(ENABLE_LIME_X3DH)
 		# Lime specific config
@@ -173,19 +158,13 @@ function(add_linphonesdk)
 		set(ENABLE_JNI NO)
 	endif()
 
-	if(BUILD_LIBLINPHONE)
-		# Liblinphone specific config
-		set(ENABLE_CONSOLE_UI OFF)
-		set(ENABLE_DATE OFF)
-		set(ENABLE_JAVADOC OFF)
-		set(ENABLE_TUTORIALS OFF)
-		set(ENABLE_UPDATE_CHECK OFF)
-		if(APPLE)
-			set(ENABLE_DAEMON OFF)
-		else()
-			set(ENABLE_DAEMON ON)
-		endif()
-	endif()
+	# Liblinphone specific config
+	set(ENABLE_CONSOLE_UI OFF)
+	set(ENABLE_DATE OFF)
+	set(ENABLE_JAVADOC OFF)
+	set(ENABLE_TUTORIALS OFF)
+	set(ENABLE_UPDATE_CHECK OFF)
+	set(ENABLE_DAEMON OFF)
 
 	set(LINPHONESDK_BUILD_TYPE "Flexisip")
 

@@ -16,32 +16,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "conference/conference-server.hh"
+
 #include <chrono>
 #include <initializer_list>
 #include <memory>
 #include <vector>
 
+#include "asserts.hh"
+#include "bc-utils.hh"
+#include "chat-room-builder.hh"
+#include "client-builder.hh"
+#include "client-core.hh"
+#include "core-assert.hh"
 #include "flexisip/registrar/registar-listeners.hh"
-
-#include "conference/conference-server.hh"
 #include "registrar/binding-parameters.hh"
 #include "registrar/extended-contact.hh"
 #include "registrar/record.hh"
 #include "registrar/registrar-db.hh"
 #include "registrardb-internal.hh"
 #include "registrardb-redis.hh"
-#include "tester.hh"
-#include "utils/asserts.hh"
-#include "utils/chat-room-builder.hh"
-#include "utils/client-builder.hh"
-#include "utils/client-core.hh"
-#include "utils/core-assert.hh"
-#include "utils/server/mysql/mysql-server.hh"
-#include "utils/server/proxy-server.hh"
-#include "utils/server/redis-server.hh"
+#include "server/mysql/mysql-server.hh"
+#include "server/proxy-server.hh"
+#include "server/redis-server.hh"
+#include "test-patterns/test.hh"
+#include "test-suite.hh"
 #include "utils/server/test-conference-server.hh"
-#include "utils/test-patterns/test.hh"
-#include "utils/test-suite.hh"
 #include "utils/uri-utils.hh"
 
 using namespace std;

@@ -42,12 +42,6 @@ job-rocky9-ninja-clang:
     # -DCMAKE_PREFIX_PATH=/usr/local: Unit tests require libnghttp2_asio, which has been build and installed into /usr/local
     CMAKE_OPTIONS: ${ROCKY9_CMAKE_OPTIONS_UNIT_TESTS}
 
-job-rocky9-ninja-clang-nosoci:
-  extends:
-    - job-rocky9-ninja-clang
-  variables:
-    CMAKE_OPTIONS: ${ROCKY9_CMAKE_OPTIONS_UNIT_TESTS} -DENABLE_SOCI=OFF
-
 #################################################
 # UNIT TESTS
 #################################################
@@ -58,12 +52,6 @@ job-rocky9-unit-test:
     - .rocky9-image-variables
   needs:
     - job-rocky9-ninja-clang
-
-job-rocky9-unit-test-nosoci:
-  extends:
-    - job-rocky9-unit-test
-  needs:
-    - job-rocky9-ninja-clang-nosoci
 
 #################################################
 # XWiki reference documentation
@@ -76,7 +64,7 @@ job-rocky9-xwiki-doc-deploy:
     - .rules-deploy  # ⚠ See `rules.yml`
     - .rocky9-image-variables
   script:
-    - prefix=/opt/belledonne-communications
+    - prefix=/opt/belledonne-communications/flexisip-conference
     - builddir=wikiBuild
     - sudo mkdir -p $prefix
     - sudo chown bc:bc $prefix
@@ -97,13 +85,7 @@ job-rocky9-rpm:
     - job: job-rocky9-unit-test
       optional: true
       artifacts: false
-    - job: job-rocky9-unit-test-nosoci
-      optional: true
-      artifacts: false
     - job: job-rocky9-ninja-clang
-      optional: true
-      artifacts: false
-    - job: job-rocky9-ninja-clang-nosoci
       optional: true
       artifacts: false
 

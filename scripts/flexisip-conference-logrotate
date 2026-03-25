@@ -1,4 +1,4 @@
-/var/opt/belledonne-communications/log/flexisip/*.log {
+/var/opt/belledonne-communications/flexisip-conference/log/*.log {
     size 500M
     rotate 7
 

@@ -1,6 +1,6 @@
 /*
     Flexisip, a flexible SIP proxy server with media capabilities.
-    Copyright (C) 2010-2025 Belledonne Communications SARL, All rights reserved.
+    Copyright (C) 2010-2026 Belledonne Communications SARL, All rights reserved.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,7 @@
 #include "conference/conference-server.hh"
 #include "flexisip/configmanager.hh"
 #include "registrar/registrar-db.hh"
-#include "utils/server/proxy-server.hh"
+#include "server/proxy-server.hh"
 
 namespace flexisip::tester {
 
@@ -60,8 +60,7 @@ private:
 		                        const std::shared_ptr<ConfigManager>& cfg,
 		                        const std::shared_ptr<RegistrarDb>& registrarDb)
 		    : ConferenceServer(std::forward<StrT>(path), std::forward<SuRootPtr>(root), cfg, registrarDb),
-		      mConfigManager(cfg) {
-		}
+		      mConfigManager(cfg) {}
 
 		// We need to change the port before the conference server binds its addresses to the Registrar. But not too
 		// soon, as if the core's global state changes, it will rebind to a new port, invalidating the previously

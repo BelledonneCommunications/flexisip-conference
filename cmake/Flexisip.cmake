@@ -1,6 +1,6 @@
 ############################################################################
-# FindLibSystemD.cmake
-# Copyright (C) 2010-2026  Belledonne Communications, Grenoble France
+# LinphoneSDK.cmake
+# Copyright (C) 2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -19,30 +19,31 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 ############################################################################
-#
-# Find libsystemd and defined the associated target.
-#
-# Target name: LibSystemD
 
-include(FindPackageHandleStandardArgs)
+############################################################################
+# Add Flexisip project as subproject
+############################################################################
 
-find_path(LIBSYSTEMD_INCLUDE_DIR
-	NAMES systemd/sd-daemon.h
-	)
-find_library(LIBSYSTEMD_LIBRARY
-	NAMES systemd libsystemd
-	)
+function(add_flexisip)
+	set(BUILD_AS_LIB ON)
+	set(ENABLE_REDIS ON)
+	set(ENABLE_SOCI ON)
+	set(ENABLE_TRANSCODER OFF)
+	set(ENABLE_OPENID_CONNECT OFF)
+	set(ENABLE_EXTERNAL_AUTH_PLUGIN OFF)
+	set(ENABLE_UNIT_TESTS_NGHTTP2ASIO ${ENABLE_UNIT_TESTS})
 
-find_package_handle_standard_args(LibSystemD REQUIRED_VARS LIBSYSTEMD_INCLUDE_DIR LIBSYSTEMD_LIBRARY)
+	set(ENABLE_FLEXIAPI ${ENABLE_UNIT_TESTS})
+	set(INTERNAL_LIBSRTP2 OFF)
 
-if (LIBSYSTEMD_FOUND)
-	add_library(LibSystemD SHARED IMPORTED)
-	set_target_properties(LibSystemD PROPERTIES
-		INTERFACE_INCLUDE_DIRECTORIES "${LIBSYSTEMD_INCLUDE_DIR}"
-		IMPORTED_LOCATION "${LIBSYSTEMD_LIBRARY}"
-	)
-endif()
+	set(ENABLE_B2BUA OFF)
+	set(ENABLE_PRESENCE OFF)
+	set(ENABLE_REGEVENT ON)
+	set(ENABLE_VOICEMAIL OFF)
+	set(ENABLE_CONFERENCE OFF)
+	set(FLEXISIP_VERSION ${FLEXISIP_CONFERENCE_FULL_VERSION})
 
-unset(LIBSYSTEMD_INCLUDE_DIR)
-unset(LIBSYSTEMD_LIBRARY)
+	add_subdirectory("flexisip")
+endfunction()
 
+add_flexisip()

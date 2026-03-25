@@ -9,9 +9,13 @@
 .vscode
 /CMakeLists.txt.user
 .idea/
+.project
 
 ### TEST ###
 BCUnitAutomated-Results.xml
 
 ### Direnv ###
 .direnv
+
+### Cache ###
+*.cache

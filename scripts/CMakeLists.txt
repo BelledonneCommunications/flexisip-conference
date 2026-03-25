@@ -1,6 +1,6 @@
 ############################################################################
 # CMakeLists.txt
-# Copyright (C) 2017  Belledonne Communications, Grenoble France
+# Copyright (C) 2017-2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -21,52 +21,24 @@
 ############################################################################
 
 # logrotate conf
-set(logrotate_dir "${SYSCONF_INSTALL_DIR}/logrotate.d")
-install(FILES flexisip-logrotate DESTINATION "${logrotate_dir}")
-set(FLEXISIP_LOGROTATE_INSTALL_LOCATION "${logrotate_dir}/flexisip-logrotate" PARENT_SCOPE)
+install(FILES flexisip-conference-logrotate DESTINATION "${LOGROTATE_DIR}")
+set(FLEXISIP_LOGROTATE_INSTALL_LOCATION "${LOGROTATE_DIR}/flexisip-conference-logrotate" PARENT_SCOPE)
 
-# legacy script
 set(bindir ${CMAKE_INSTALL_FULL_BINDIR})
 
 # systemd
-set(systemd_services "proxy")
-if(ENABLE_PRESENCE)
-    list(APPEND systemd_services "presence")
-endif()
-if(ENABLE_CONFERENCE)
-    list(APPEND systemd_services "conference" "regevent")
-endif()
-if(ENABLE_B2BUA)
-    list(APPEND systemd_services "b2bua")
-endif()
-if(ENABLE_VOICEMAIL)
-    list(APPEND systemd_services "voicemail")
-endif()
+set(systemd_services "conference")
 
 # service configuration files
 foreach(service ${systemd_services})
     set(after "")
-    if(service MATCHES "proxy")
-        set(description "Flexisip proxy server")
-        set(after " redis.service mysqld.service mariadb.service")
-    elseif(service MATCHES "presence")
-        set(description "Flexisip presence server")
-        set(after " redis.service mysqld.service mariadb.service")
-    elseif(service MATCHES "conference")
-        set(description "Flexisip conference server")
-        set(after " redis.service mysqld.service mariadb.service")
-    elseif(service MATCHES "regevent")
-        set(description "Flexisip RegEvent server")
-        set(after " redis.service")
-    elseif(service MATCHES "b2bua")
-        set(description "Flexisip Back-to-back user agent server")
-        set(after " redis.service")
-    elseif(service MATCHES "voicemail")
-        set(description "Flexisip Voicemail server")
-    endif()
+
+    set(description "Flexisip conference server")
+    set(after " redis.service mysqld.service mariadb.service")
+
     set(service_description "${description}")
     set(service_after "${after}")
-    set(service_execstart "${bindir}/flexisip --server ${service} --disable-stdout --syslog --pidfile /var/run/flexisip-${service}.pid")
+    set(service_execstart "${bindir}/flexisip-conference --disable-stdout --syslog --pidfile /var/run/flexisip-${service}.pid")
     set(service_filename "flexisip-${service}.service")
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/flexisip.service.in"
@@ -77,7 +49,7 @@ foreach(service ${systemd_services})
     # template file
     set(service_description  "${description} - %i instance")
     set(service_after "${after}")
-    set(service_execstart "/opt/belledonne-communications/bin/flexisip --server ${service} --disable-stdout --syslog --pidfile /var/run/flexisip-${service}/%i.pid -c /etc/flexisip/%i.conf")
+    set(service_execstart "/opt/belledonne-communications/flexisip-conference/bin/flexisip-conference --disable-stdout --syslog --pidfile /var/run/flexisip-${service}/%i.pid -c /etc/opt/belledonne-communications/flexisip-conference/%i.conf")
     set(service_filename_at "flexisip-${service}@.service")
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/flexisip.service.in"
@@ -86,14 +58,4 @@ foreach(service ${systemd_services})
     list(APPEND generated_services "${CMAKE_CURRENT_BINARY_DIR}/${service_filename_at}")
 endforeach()
 
-# linphone daemon
-set(linphone_service_file "flexisip-linphone-daemon.service")
-configure_file("${linphone_service_file}.in" "${linphone_service_file}")
-list(APPEND generated_services "${CMAKE_CURRENT_BINARY_DIR}/${linphone_service_file}")
-
-
 install(FILES ${generated_services} DESTINATION "${FLEXISIP_SYSTEMD_INSTALL_DIR}")
-
-# flexisip_cli.py
-install(PROGRAMS flexisip_cli.py DESTINATION "${CMAKE_INSTALL_BINDIR}")
-install(PROGRAMS firebase_v1_get_access_token.py DESTINATION ${CMAKE_INSTALL_DATADIR}/flexisip)

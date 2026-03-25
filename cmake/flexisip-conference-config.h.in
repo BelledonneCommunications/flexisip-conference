@@ -18,24 +18,18 @@
 
 #cmakedefine CONFIG_DIR "${CONFIG_DIR}"
 #cmakedefine INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
+/* Default lib directory */
+#cmakedefine DEFAULT_LIB_DIR "${DEFAULT_LIB_DIR}"
+/* Default log directory */
+#cmakedefine DEFAULT_LOG_DIR "${DEFAULT_LOG_DIR}"
 
 #cmakedefine ENABLE_SYSTEMD 1
 #cmakedefine ENABLE_SNMP 1
 #cmakedefine ENABLE_LIBODB_MYSQL 1
-#cmakedefine ENABLE_TRANSCODER 1
-#cmakedefine ENABLE_PRESENCE 1
-#cmakedefine ENABLE_CONFERENCE 1
-#cmakedefine ENABLE_B2BUA 1
-#cmakedefine ENABLE_VOICEMAIL 1
-#cmakedefine ENABLE_ODBC 1
 #cmakedefine ENABLE_REDIS 1
 #cmakedefine ENABLE_SOCI 1
-#cmakedefine ENABLE_FLEXIAPI 1
-#cmakedefine ENABLE_MDNS 1
 #cmakedefine ENABLE_UNIT_TESTS 1
-#cmakedefine ENABLE_UNIT_TESTS_NGHTTP2ASIO 1
 
-#cmakedefine HAVE_DATEHANDLER 1
 #cmakedefine HAVE_ARC4RANDOM 1
 #cmakedefine HAVE_SYS_PRCTL_H 1
 
@@ -53,30 +47,4 @@
 
 #define SNMP_COMPANY_OID 10000
 
-/* oRTP ABI version */
-#define ORTP_ABI_VERSION 9
-
-/* oRTP rtp_session_set_reuseaddr availabled */
-#define ORTP_HAS_REUSEADDR 1
-
-/* Default lib directory */
-#define DEFAULT_LIB_DIR "@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/lib/flexisip"
-
-/* Default log directory */
-#define DEFAULT_LOG_DIR "@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/log/flexisip"
-
-/* Default b2bua data dir */
-#define DEFAULT_B2BUA_DATA_DIR "@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/flexisip/b2b"
-
-/* Default directory for Flexisip's plugins */
-#define DEFAULT_PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/flexisip/plugins"
-
-/* Default directory to store voicemails */
-#define DEFAULT_VOICEMAIL_DIR "@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/tmp/flexisip"
-
-/* Directory to store the default announces played by the voicemail server */
-#define VOICEMAIL_ANNOUNCES_DIR "${VOICEMAIL_ANNOUNCES_DIR}"
-
 #define BELR_GRAMMARS_DIR "${BELR_GRAMMARS_DIR}"
-
-#define FIREBASE_GET_ACCESS_TOKEN_SCRIPT_PATH "${CMAKE_INSTALL_FULL_DATADIR}/flexisip/firebase_v1_get_access_token.py"

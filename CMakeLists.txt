@@ -1,6 +1,6 @@
 ############################################################################
 # CMakeLists.txt
-# Copyright (C) 2010-2026  Belledonne Communications, Grenoble France
+# Copyright (C) 2010-2026 Belledonne Communications, Grenoble France
 #
 ############################################################################
 #
@@ -31,28 +31,21 @@ cmake_policy(SET CMP0077 NEW)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Force the compiler version to be at least what is used in our docker images with the lowest versions.
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
-	message(FATAL_ERROR "Flexisip requires at least gcc 13")
-elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.0)
-	message(FATAL_ERROR "Flexisip requires at least clang 19")
-endif()
-
 # -O0 disables optimizations. Any level of optimization (higher than 0) will throw off debuggers while stepping through source code.
 # With sanitizers enabled, fortifying source requires some optimizations. This is unwanted in Debug builds.
 set(CMAKE_C_FLAGS_DEBUG_INIT "-g -O0 -U_FORTIFY_SOURCE -fdiagnostics-color=always")
 set(CMAKE_CXX_FLAGS_DEBUG_INIT ${CMAKE_C_FLAGS_DEBUG_INIT})
 
 include("./linphone-sdk/bctoolbox/cmake/BCToolboxCMakeUtils.cmake")
-if(FLEXISIP_VERSION)
-	message(WARNING "Ignoring git version, using provided \"${FLEXISIP_VERSION}\" instead")
-	set(FLEXISIP_FULL_VERSION ${FLEXISIP_VERSION})
+if(FLEXISIP_CONFERENCE_VERSION)
+	message(WARNING "Ignoring git version, using provided \"${FLEXISIP_CONFERENCE_VERSION}\" instead")
+	set(FLEXISIP_CONFERENCE_FULL_VERSION ${FLEXISIP_CONFERENCE_VERSION})
 else()
 	# Set project version by using the Git describe
-	bc_compute_full_version(FLEXISIP_FULL_VERSION)
+	bc_compute_full_version(FLEXISIP_CONFERENCE_FULL_VERSION)
 endif()
-bc_parse_full_version("${FLEXISIP_FULL_VERSION}" major minor patch)
-project(flexisip VERSION "${major}.${minor}.${patch}" LANGUAGES C CXX)
+bc_parse_full_version("${FLEXISIP_CONFERENCE_FULL_VERSION}" major minor patch)
+project(flexisip-conference VERSION "${major}.${minor}.${patch}" LANGUAGES C CXX)
 unset(major)
 unset(minor)
 unset(patch)
@@ -64,7 +57,15 @@ include(CheckFunctionExists)
 include(FeatureSummary)
 include(CheckCXXSourceCompiles)
 include(GNUInstallDirs)
-include("cmake/FlexisipUtils.cmake")
+
+# Force the compiler version to be at least what is used in our docker images with the lowest versions.
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
+	message(FATAL_ERROR "Flexisip requires at least gcc 13 (currently ${CMAKE_CXX_COMPILER_VERSION})")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.0)
+	message(FATAL_ERROR "Flexisip requires at least clang 19 (currently ${CMAKE_CXX_COMPILER_VERSION})")
+endif()
+
+include("flexisip/cmake/FlexisipUtils.cmake")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(IS_DEBUG TRUE)
@@ -77,67 +78,33 @@ option(ENABLE_SANITIZERS "Turn on sanitizers, like the LSAN memory leak detector
 option(ENABLE_SUBMODULES_UBSAN "Turn on UBSAN on submodule code" OFF)
 option(ENABLE_STRICT "Pass strict flags to the compiler" ON)
 option(ENABLE_STRICT_LINPHONESDK "Pass strict flags to the compiler for all Linphone SDK submodules" OFF)
-option(ENABLE_DATEHANDLER "Build DateHandler module" OFF)
 option(ENABLE_PDFDOC "Build PDF documentation" OFF)
-option(ENABLE_MONOTONIC_CLOCK_REGISTRATIONS "Enable monotonic clock for registrations" OFF)
-option(ENABLE_PRESENCE "Build with presence server support" ON)
-option(ENABLE_REDIS "Build with Redis support" ON)
+option(ENABLE_REDIS_TLS "Enable TLS connections with Redis servers. Libhiredis may need to be compiled internally, depending on the version of the library available on your system" OFF)
+option(INTERNAL_LIBHIREDIS "Build libhiredis source code present as Flexisip submodule instead of searching it in system libraries" OFF)
 option(ENABLE_SNMP "Build with SNMP support" ON)
-option(ENABLE_SOCI "Build with SOCI support" ON)
-option(ENABLE_TRANSCODER "Build with transcoder support" ON)
 option(ENABLE_G729 "Build with G729 audio codec support" OFF) # Disabled by default for license conformity
-option(ENABLE_MDNS "Build with multicast DNS support" OFF)
-option(ENABLE_OPENID_CONNECT "Build with OpenID Connect support" ON)
-option(ENABLE_EXTERNAL_AUTH_PLUGIN "Enable ExternalAuth plugin support" ON)
 option(ENABLE_UNIT_TESTS "Enable Flexisip unit tests (low level tests)" OFF)
 add_ccache_option(ON)
 option(ENABLE_COVERAGE "Enable flexisip clang test coverage reports (add instrumentation)" OFF)
-option(ENABLE_FLEXIAPI "Enable support for FlexiAPI. It can be used for sending push notification and usage statistics (messages, calls, conferences)." ON)
 option(INTERNAL_LIBSRTP2 "Build SRTP2 source code present as linphone-sdk submodule instead of searching it in system libraries" ON)
 option(INTERNAL_JSONCPP "Build and use vendored Jsoncpp source code instead of searching for it in system libraries" OFF)
+option(ENABLE_SOCI_POSTGRESQL_BACKEND "Build with SOCI Postgre sql backend support" ON)
+option(ENABLE_EKT_SERVER "Enable Encrypted Key Transport server. For customers under a proprietary license, this functionality is under a specific license." OFF)
 
-cmake_dependent_option(INTERNAL_LIBHIREDIS "Build libhiredis source code present as Flexisip submodule instead of searching it in system libraries" OFF "ENABLE_REDIS" OFF)
-cmake_dependent_option(ENABLE_REDIS_TLS "Enable TLS connections with Redis servers. Libhiredis may need to be compiled internally, depending on the version of the library available on your system" ON "ENABLE_REDIS" OFF)
-cmake_dependent_option(ENABLE_CONFERENCE "Build conference support" ON "ENABLE_SOCI" OFF)
-cmake_dependent_option(ENABLE_SOCI_POSTGRESQL_BACKEND "Build with SOCI Postgre sql backend support" ON "ENABLE_SOCI" OFF)
-cmake_dependent_option(ENABLE_B2BUA "Enable Back2back user agent support" ON "ENABLE_SOCI" OFF)
-cmake_dependent_option(ENABLE_UNIT_TESTS_NGHTTP2ASIO "Enable unit tests requiring libnghttp2_asio" ON "ENABLE_UNIT_TESTS" ON)
-cmake_dependent_option(ENABLE_SPECIFIC_FEATURES "Enable media relay specific features" OFF "ENABLE_TRANSCODER" OFF)
-cmake_dependent_option(ENABLE_EKT_SERVER "Enable Encrypted Key Transport server. For customers under a proprietary license, this functionality is under a specific license." OFF "ENABLE_CONFERENCE" OFF)
-cmake_dependent_option(ENABLE_VOICEMAIL "Build with voicemail server support" ON "ENABLE_FLEXIAPI" OFF)
 
 set(CPACK_GENERATOR "" CACHE STRING "Generator to use for making package. Supported values: 'RPM', 'DEB'")
 set(SYSCONF_INSTALL_DIR "" CACHE STRING
-	"Configuration directory, the place where Flexisip expects its flexisip.conf file to reside. Always equal to '${CMAKE_INSTALL_FULL_SYSCONFDIR}' if empty."
+	"Configuration directory, the place where Flexisip conference server expects its flexisip-conference.conf file to reside. Defaults to '${CMAKE_INSTALL_FULL_SYSCONFDIR}' if empty."
+)
+set(LOGROTATE_DIR "" CACHE STRING
+	"The place where the logrotate file of the Flexisip conference server will be installed. Defaults to '${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate' if empty."
 )
 set(FLEXISIP_SYSTEMD_INSTALL_DIR "" CACHE STRING
-	"Where to install the SystemD units. Always equal to '${CMAKE_INSTALL_FULL_DATAROOTDIR}/systemd/system' if empty."
+	"Where to install the SystemD units. Defaults to '${CMAKE_INSTALL_FULL_DATAROOTDIR}/systemd/system' if empty."
 )
-
-if(ENABLE_CONFERENCE OR ENABLE_B2BUA OR ENABLE_VOICEMAIL)
-	set(LIBLINPHONE_REQUIRED ON)
-	set(HAVE_LIBLINPHONE YES)
-	set(HAVE_LIBLINPHONECXX YES)
-elseif(ENABLE_UNIT_TESTS)
-	set(LIBLINPHONE_REQUIRED ON)
-else()
-	set(LIBLINPHONE_REQUIRED OFF)
-endif()
-
-if(ENABLE_SOCI OR LIBLINPHONE_REQUIRED)
-	set(SOCI_REQUIRED ON)
-else()
-	set(SOCI_REQUIRED OFF)
-endif()
-
-if(ENABLE_VOICEMAIL)
-	set(VOICEMAIL_ANNOUNCES_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/flexisip/voicemail")
-endif()
 
 # It seems -fsanitize=address and -Wuninitialized don't play well together
-if(CMAKE_BUILD_TYPE STREQUAL "Sanitizer"
-	AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-)
+if(CMAKE_BUILD_TYPE STREQUAL "Sanitizer" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105616
 	if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL 13.2.1)
 		set(HAS_GCC_BUG_105616 ON)
@@ -165,8 +132,11 @@ endif()
 if(FLEXISIP_SYSTEMD_INSTALL_DIR STREQUAL "")
 	set(FLEXISIP_SYSTEMD_INSTALL_DIR "${CMAKE_INSTALL_FULL_DATAROOTDIR}/systemd/system")
 endif()
+if(LOGROTATE_DIR STREQUAL "")
+	set(LOGROTATE_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate")
+endif()
 
-# Build libflexisip and all its dependencies as shared libraries
+# Build libflexisip-conference and all its dependencies as shared libraries
 set(BUILD_SHARED_LIBS ON)
 
 if(NOT CMAKE_INSTALL_RPATH AND CMAKE_INSTALL_PREFIX)
@@ -177,10 +147,12 @@ if(NOT CMAKE_INSTALL_RPATH AND CMAKE_INSTALL_PREFIX)
 	message(STATUS "Setting install rpath to ${CMAKE_INSTALL_RPATH}")
 endif()
 
-set(CONFIG_DIR "${SYSCONF_INSTALL_DIR}/flexisip")
+set(CONFIG_DIR "${SYSCONF_INSTALL_DIR}" CACHE STRING "Default flexisip-conference configuration directory")
 message(STATUS "Config dir: ${CONFIG_DIR}")
 
 set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+set(DEFAULT_LIB_DIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib")
+set(DEFAULT_LOG_DIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log")
 
 function(FIND_PROGRAM_REQUIRED varname progname)
 	find_program(${varname} NAMES "${progname}")
@@ -189,8 +161,10 @@ function(FIND_PROGRAM_REQUIRED varname progname)
 	endif()
 endfunction()
 
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+	"${CMAKE_CURRENT_SOURCE_DIR}/flexisip/cmake"
+)
 
 if(ENABLE_SANITIZERS)
 	set(SANITIZERS_FLAG "-fsanitize=address")
@@ -198,16 +172,15 @@ if(ENABLE_SANITIZERS)
 		list(APPEND SANITIZERS_FLAG "-fsanitize=undefined")
 	endif ()
 	add_compile_options(
-			${SANITIZERS_FLAG}
-			"-fno-omit-frame-pointer"
-			"-fno-optimize-sibling-calls"
+		${SANITIZERS_FLAG}
+		"-fno-omit-frame-pointer"
+		"-fno-optimize-sibling-calls"
 	)
 	add_link_options(${SANITIZERS_FLAG})
 endif()
 
-set(INTERNAL_MBEDTLS ON)
-include("cmake/ExternalDependencies.cmake")
 include("cmake/LinphoneSDK.cmake")
+include("cmake/Flexisip.cmake")
 
 if(ENABLE_SANITIZERS)
 	set(MORE_SANITIZERS_FLAG "-fsanitize=undefined" "-fno-sanitize-recover=undefined")
@@ -216,8 +189,6 @@ if(ENABLE_SANITIZERS)
 endif()
 
 # Required packages
-
-find_package(LibNgHttp2 REQUIRED)
 find_package(Threads)
 find_package(XercesC)
 if(APPLE)
@@ -227,7 +198,6 @@ endif()
 # Dummy executable used by the type-safe abstractions over POSIX processes
 find_program(DUMMY_EXEC NAMES true REQUIRED)
 
-check_function_exists(arc4random HAVE_ARC4RANDOM)
 find_file(HAVE_SYS_PRCTL_H NAMES sys/prctl.h)
 
 set(CMAKE_REQUIRED_LIBRARIES)
@@ -248,19 +218,6 @@ if(ENABLE_SNMP)
 	execute_process(COMMAND "${NET_SNMP_PROG}" "--agent-libs" OUTPUT_VARIABLE NET_SNMP_LIBRARIES OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
-if(ENABLE_SPECIFIC_FEATURES)
-	set(MEDIARELAY_SPECIFIC_FEATURES_ENABLED ON)
-endif()
-
-
-if(ENABLE_MONOTONIC_CLOCK_REGISTRATIONS)
-	set(MONOTONIC_CLOCK_REGISTRATIONS ON)
-endif()
-
-if(ENABLE_DATEHANDLER)
-	set(HAVE_DATEHANDLER ON)
-endif()
-
 if(ENABLE_REDIS AND NOT INTERNAL_LIBHIREDIS)
 	find_package(Hiredis 1.1 REQUIRED)
 endif()
@@ -274,17 +231,11 @@ add_definitions("-DBCTBX_DEBUG_MODE")
 
 find_package(OpenSSL 0.9.8 REQUIRED)
 
-if(ENABLE_OPENID_CONNECT)
-	find_package(cpp-jwt REQUIRED)
-endif()
-
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)
 
 include_directories(
 	"include"
 	"src"
-	"src/plugin"
-	"src/presence"
 	"${CMAKE_CURRENT_BINARY_DIR}"
 	"${CMAKE_CURRENT_BINARY_DIR}/include"
 	"${CMAKE_CURRENT_BINARY_DIR}/src"
@@ -292,8 +243,8 @@ include_directories(
 
 set(BELR_GRAMMARS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/belr/grammars")
 
-configure_file(cmake/flexisip-config.h.in flexisip-config.h)
-set_source_files_properties(${PROJECT_BINARY_DIR}/flexisip-config.h PROPERTIES GENERATED ON)
+configure_file(cmake/flexisip-conference-config.h.in flexisip-conference-config.h)
+set_source_files_properties(${PROJECT_BINARY_DIR}/flexisip-conference-config.h PROPERTIES GENERATED ON)
 add_compile_definitions("HAVE_CONFIG_H")
 
 # Compute and set compilation options
@@ -342,7 +293,6 @@ add_compile_options(${CPP_BUILD_FLAGS} ${CXX_BUILD_FLAGS})
 add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(scripts)
-add_subdirectory(share)
 
 if(ENABLE_UNIT_TESTS)
 	add_subdirectory(tester)

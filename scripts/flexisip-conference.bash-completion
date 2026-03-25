@@ -12,7 +12,7 @@ _flexisip_completion()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev=${COMP_WORDS[COMP_CWORD-1]}
 
-    # flexisip main commands
+    # flexisip-conference main commands
     cmds='--transports --debug --config -c\
         --dump-default --dump-mibs --help --set --list-settables'
 
@@ -31,9 +31,9 @@ _flexisip_completion()
            COMPREPLY=( $(compgen -o filenames -f -- $cur ))
            ;;
         --set)
-           local allsettables=`flexisip --list-settables`
+           local allsettables=`flexisip-conference --list-settables`
 #oifs=$IFS
-#IFS=$'\n' COMPREPLY=($(IFS=$'\n' compgen -W "`flexisip --list-settables`" -- $cur ))
+#IFS=$'\n' COMPREPLY=($(IFS=$'\n' compgen -W "`flexisip-conference --list-settables`" -- $cur ))
 #IFS=$oifs
 	local IFS=$'\n'
 	COMPREPLY=( $(compgen -W "$allsettables" -- $cur))
