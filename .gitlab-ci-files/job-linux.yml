@@ -77,6 +77,8 @@
     - .rules-default  # ⚠ See `rules.yml`
   variables:
     CMAKE_GENERATOR: 'Ninja'
+    CC: clang
+    CXX: clang++
   script:
     - "[[ -f /opt/rh/devtoolset-8/enable ]] && source /opt/rh/devtoolset-8/enable"
     - *set-max-jobs
