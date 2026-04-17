@@ -14,7 +14,7 @@
     esac
     echo "CMAKE_BUILD_PARALLEL_LEVEL='$CMAKE_BUILD_PARALLEL_LEVEL'"
 
-.add_deploy_keys: &add-deploy-keys
+.add-deploy-keys: &add-deploy-keys
   - |
     ##
     ## If SSH keys are defined then start ssh-agent and add the keys
@@ -130,33 +130,6 @@
   before_script:
     - *add-deploy-keys
   script: 'bash <(eval ${DEPLOY_SCRIPT}) ${DISTRIB} ${RELEASE}'
-
-#################################################
-# DOCKER
-#################################################
-
-.job-flexisip-image-deploy:
-  stage: image
-  tags: [ "linux-deploy-flat" ]
-  extends: .rules-deploy  # ⚠ See `rules.yml`
-  script:
-    - mkdir -p docker/DEBS && mv build/*.{deb,ddeb} docker/DEBS
-    - cd docker
-    - make flexisip-deb-build
-    - make flexisip-deb-push
-
-# Enable this to use tests-flexisip-mr
-#docker-build-flexisip-src:
-#  stage: build 🏗
-#  tags: [ "linux-nuc-build" ]
-#  extends: .rules-dev  # ⚠ See `rules.yml`
-#  variables:
-#    DOCKER_BUILD_OPTIONS: "--no-cache --force-rm -t flexisip-from-src:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA -f docker/flex-from-src --build-arg=njobs=12 --build-arg=build_type=RelWithDebInfo"
-#  script:
-#    - docker image ls
-#    - echo $DOCKER_BUILD_OPTIONS
-#    - docker build $DOCKER_BUILD_OPTIONS .
-#    - docker image ls
 
 #################################################
 # Nightly only
