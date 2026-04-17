@@ -76,27 +76,21 @@ debian13-coverage:
     TERM: xterm-color
     LLVM_COV_OPTIONS: >
       -instr-profile=default.profdata
-      include/flexisip
       src
-      --ignore-filename-regex=libxsd
-      --ignore-filename-regex=linphone-sdk
-      --ignore-filename-regex=src/lib/
-      --ignore-filename-regex=src/tclap
-      --ignore-filename-regex=src/xml
-      --ignore-filename-regex=submodules
+
   script:
-    - export SO_FILE=$PWD/work/lib/libflexisip.so
-    - echo "Full coverage of Flexisip library"
-    - llvm-cov show $SO_FILE $LLVM_COV_OPTIONS -use-color > flexisip_coverage_lines_full.txt
-    - echo "Display coverage by file of Flexisip library"
-    - llvm-cov report $SO_FILE $LLVM_COV_OPTIONS -use-color | tee flexisip_coverage_report_by_file.txt
+    - export SO_FILE=$PWD/work/lib/libflexisip-conference.so
+    - echo "Full coverage of Flexisip-conference library"
+    - llvm-cov show $SO_FILE $LLVM_COV_OPTIONS -use-color > flexisip-conference_coverage_lines_full.txt
+    - echo "Display coverage by file of Flexisipconference library"
+    - llvm-cov report $SO_FILE $LLVM_COV_OPTIONS -use-color | tee flexisip-conference_coverage_report_by_file.txt
     - echo "filtering work of report to get global coverage %"
-    - cat flexisip_coverage_report_by_file.txt | grep -E "TOTAL" | grep -Po "\d+\.\d+\%" | sed -n '3p'
+    - cat flexisip-conference_coverage_report_by_file.txt | grep -E "TOTAL" | grep -Po "\d+\.\d+\%" | sed -n '3p'
     - echo "Export results in JSON format"
-    - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=text > flexisip_coverage_export.txt
+    - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=text > flexisip-conference_coverage_export.txt
     - echo "Export results in Lcov format"
-    - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=lcov > flexisip_coverage_export.lcov
-    - lcov_cobertura flexisip_coverage_export.lcov
+    - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=lcov > flexisip-conference_coverage_export.lcov
+    - lcov_cobertura flexisip-conference_coverage_export.lcov
   coverage: '/[0-9][0-9]\.[0-9]+\%/'
   artifacts:
     reports:
@@ -105,10 +99,10 @@ debian13-coverage:
         path: coverage.xml
     paths:
       - default.profdata
-      - flexisip_coverage_report_by_file.txt
-      - flexisip_coverage_lines_full.txt
-      - flexisip_coverage_export.lcov
-      - flexisip_coverage_export.txt
+      - flexisip-conference_coverage_report_by_file.txt
+      - flexisip-conference_coverage_lines_full.txt
+      - flexisip-conference_coverage_export.lcov
+      - flexisip-conference_coverage_export.txt
       - coverage.xml
     expire_in: 1 week
 
