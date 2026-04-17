@@ -61,7 +61,6 @@ job-ubuntu-24-04-deb:
   extends:
     - .job-linux-deb
     - .ubuntu-24-04-image
-    - .rules-manual-deploy # ⚠ See `rules.yml`, override .job-linux-deb rules
   needs:
     - job: job-ubuntu-24-04-unit-test
       optional: true
