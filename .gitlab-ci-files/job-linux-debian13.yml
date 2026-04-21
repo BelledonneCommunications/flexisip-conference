@@ -80,17 +80,18 @@ debian13-coverage:
 
   script:
     - export SO_FILE=$PWD/work/lib/libflexisip-conference.so
-    - echo "Full coverage of Flexisip-conference library"
-    - llvm-cov show $SO_FILE $LLVM_COV_OPTIONS -use-color > flexisip-conference_coverage_lines_full.txt
     - echo "Display coverage by file of Flexisipconference library"
     - llvm-cov report $SO_FILE $LLVM_COV_OPTIONS -use-color | tee flexisip-conference_coverage_report_by_file.txt
     - echo "filtering work of report to get global coverage %"
     - cat flexisip-conference_coverage_report_by_file.txt | grep -E "TOTAL" | grep -Po "\d+\.\d+\%" | sed -n '3p'
-    - echo "Export results in JSON format"
-    - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=text > flexisip-conference_coverage_export.txt
     - echo "Export results in Lcov format"
     - llvm-cov export $SO_FILE $LLVM_COV_OPTIONS -format=lcov > flexisip-conference_coverage_export.lcov
     - lcov_cobertura flexisip-conference_coverage_export.lcov
+    - echo "Generate HTML coverage report"
+    - mkdir -p conference_coverage_html
+    - llvm-cov show $SO_FILE $LLVM_COV_OPTIONS -format=html -output-dir=conference_coverage_html
+    - chmod -R 755 conference_coverage_html
+    - ls -al conference_coverage_html/*
   coverage: '/[0-9][0-9]\.[0-9]+\%/'
   artifacts:
     reports:
@@ -100,9 +101,8 @@ debian13-coverage:
     paths:
       - default.profdata
       - flexisip-conference_coverage_report_by_file.txt
-      - flexisip-conference_coverage_lines_full.txt
       - flexisip-conference_coverage_export.lcov
-      - flexisip-conference_coverage_export.txt
+      - conference_coverage_html
       - coverage.xml
     expire_in: 1 week
 
