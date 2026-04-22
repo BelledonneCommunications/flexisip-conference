@@ -71,7 +71,7 @@ job-rocky9-xwiki-doc-deploy:
     - mkdir $builddir
     - cmake -S . -B $builddir -G Ninja -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_PREFIX_PATH=$prefix $DEFAULT_CMAKE_OPTIONS $CMAKE_OPTIONS
     - cmake --build $builddir
-    - /usr/bin/python3 ./doc/xw.py --flexisip-binary $builddir/bin/flexisip -H $XWIKI_HOSTNAME -u $XWIKI_USERNAME -p $XWIKI_PASSWORD
+    - /usr/bin/python3 ./doc/xw.py --flexisip-binary $builddir/bin/flexisip-conference -H $XWIKI_HOSTNAME -u $XWIKI_USERNAME -p $XWIKI_PASSWORD --wiki-directory "/Flexisip/Conference server/Configuration reference guide"
 
 #################################################
 # RPM
