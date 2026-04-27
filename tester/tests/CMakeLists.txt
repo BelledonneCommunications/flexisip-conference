@@ -23,11 +23,16 @@
 add_executable(flexisip_conference_tester
 	conference/conference-server-tester.cc
 	conference/registration-subscription-tester.cc
-	eventlogs/writers/flexi-stats-event-log-writer-tester.cc
 	main-tester.cc
 
 	${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.cc ${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.hh
 )
+
+if(ENABLE_UNIT_TESTS_NGHTTP2ASIO)
+	target_sources(flexisip_conference_tester PRIVATE
+		eventlogs/writers/flexi-stats-event-log-writer-tester.cc
+	)
+endif()
 
 if(HAS_GCC_BUG_105562)
 	set_source_files_properties(

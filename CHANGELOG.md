@@ -29,7 +29,8 @@ The following changes are made in comparison to the conference server released i
     - Add support for end-to-end conference encryption by installing the EKT server plugin. For customers under a
       proprietary license, this functionality is under a specific license.
 - **Build:**
-    - Add support for C++20
+    - Add support for C++20.
+    - Add support for Ubuntu 26.04.
 
 - **Global:** Parameter `global/watchdog-notify-interval` set the interval between notifications of a flexisip service to the watchdog of SystemD.
 - **All servers:** Option `--disable-stdout` in command line to not display the log in standard output.
@@ -51,6 +52,7 @@ The following changes are made in comparison to the conference server released i
 - **Configuration:** Parameters of type `StringList` can no longer be declared using the character `','` to separate
   each element.
 - **Debian 11:** Support discontinued, as distribution will reach its end-of-life (2026-08-31).
+- **Ubuntu 22.04:** Support discontinued
 - **Global:**
   - Option `--daemon` in flexisip services start command
   - Parameter `global/tls-certificates-dir` (deprecated in 2.2.0)

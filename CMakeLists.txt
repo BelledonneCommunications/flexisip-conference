@@ -84,6 +84,7 @@ option(INTERNAL_LIBHIREDIS "Build libhiredis source code present as Flexisip sub
 option(ENABLE_SNMP "Build with SNMP support" ON)
 option(ENABLE_G729 "Build with G729 audio codec support" OFF) # Disabled by default for license conformity
 option(ENABLE_UNIT_TESTS "Enable Flexisip unit tests (low level tests)" OFF)
+cmake_dependent_option(ENABLE_UNIT_TESTS_NGHTTP2ASIO "Enable unit tests requiring libnghttp2_asio" ON "ENABLE_UNIT_TESTS" OFF)
 add_ccache_option(ON)
 option(ENABLE_COVERAGE "Enable flexisip clang test coverage reports (add instrumentation)" OFF)
 option(INTERNAL_LIBSRTP2 "Build SRTP2 source code present as linphone-sdk submodule instead of searching it in system libraries" ON)
