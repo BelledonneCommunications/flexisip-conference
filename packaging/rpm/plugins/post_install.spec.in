@@ -1,0 +1,1 @@
+systemctl try-restart @FLEXISIP_SERVICES@ >/dev/null 2>&1 || :

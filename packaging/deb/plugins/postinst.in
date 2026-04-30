@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Try to restart daemon after plugin installation or upgrade
+if [ "$1" = "configure" ]; then
+	systemctl try-restart @FLEXISIP_SERVICES@ >/dev/null 2>&1 || :
+fi

@@ -46,6 +46,11 @@ list(JOIN extra_dependencies ", " extra_dependencies_str)
 # Set the SystemD services that should be restarted on package update
 set(FLEXISIP_SERVICES "flexisip-conference")
 
+# Set the executable path for post install scripts
+set(FLEXISIP_CONFERENCE_EXECUTABLE_INSTALL_LOCATION
+		"${CMAKE_INSTALL_FULL_BINDIR}/flexisip-conference"
+)
+
 # List of files to mark as config files.
 # Prevents them from being replaced after a package upgrade or downgrade if their content has been modified.
 set(CONFIG_FILES
@@ -112,13 +117,17 @@ if("RPM" IN_LIST CPACK_GENERATOR)
 		message(STATUS "RPM debuginfo: '${PROJECT_SOURCE_DIR}' will be replaced by '${CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX}'/src_0")
 	endif()
 
-	## Configure %post, %postun, %preun rpmbuild section
+	## Configure %post, %postun, %preun rpmbuild section but only for main package
 	set(FLEXISIP_CONFERENCE_LOGDIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log")
 	foreach (secname "post_install" "pre_uninstall" "post_uninstall")
 		configure_file("rpm/${secname}.spec.in" "rpm/${secname}.spec" @ONLY)
 		string(TOUPPER "${secname}" SECNAME)
-		set(CPACK_RPM_${SECNAME}_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/rpm/${secname}.spec")
+		set(CPACK_RPM_UNSPECIFIED_${SECNAME}_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/rpm/${secname}.spec")
 	endforeach ()
+
+	## Configure %post rpmbuild section for ekt server plugin
+	configure_file("rpm/plugins/post_install.spec.in" "rpm/plugins/post_install.spec" @ONLY)
+	set(CPACK_RPM_PLUGIN-EKTSERVER_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/rpm/plugins/post_install.spec")
 
 	## Declare config files
 	foreach (conffile ${CONFIG_FILES})
@@ -157,14 +166,18 @@ if("DEB" IN_LIST CPACK_GENERATOR)
 	foreach (conffile ${CONFIG_FILES})
 		file(APPEND "${conffiles_path}" "${conffile}\n")
 	endforeach ()
-	list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${conffiles_path}")
+	list(APPEND CPACK_DEBIAN_UNSPECIFIED_PACKAGE_CONTROL_EXTRA "${conffiles_path}")
 
-	# Add control scripts
+	# Add control scripts but only for main package
 	set(control_files "postinst" "prerm" "postrm")
 	foreach (control ${control_files})
 		configure_file("deb/${control}.in" "deb/${control}" @ONLY)
-		list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/deb/${control}")
+		list(APPEND CPACK_DEBIAN_UNSPECIFIED_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/deb/${control}")
 	endforeach ()
+
+	# Add only the postinst control file for ekt server plugin
+	configure_file("deb/plugins/postinst.in" "deb/plugins/postinst" @ONLY)
+	list(APPEND CPACK_DEBIAN_PLUGIN-EKTSERVER_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/deb/plugins/postinst")
 endif()
 
 #######################################################################################################################
