@@ -11,6 +11,7 @@
     - cmake -S . -B work -G "$CMAKE_GENERATOR" $DEFAULT_MACOS_CMAKE_OPTIONS $CMAKE_OPTIONS -DENABLE_SOCI_POSTGRESQL_BACKEND=OFF -DENABLE_REDIS_TLS=OFF -DENABLE_SYSTEMD=OFF
     - cmake --build work -- $ADDITIONAL_BUILD_OPTIONS
     - ccache -s
+  allow_failure: true # Temporarily allows macosx jobs to fail because c++ 20 is not yet supported on our build machines
 
 
 #################################################

@@ -24,7 +24,6 @@
 #include <unordered_map>
 
 #include "bctoolbox/tester.h"
-#include "linphone++/enums.hh"
 
 #include "asserts.hh"
 #include "bc-utils.hh"
@@ -33,8 +32,6 @@
 #include "core-assert.hh"
 #include "eventlogs/event-logs.hh"
 #include "flexiapi/schemas/iso-8601-date.hh"
-#include "flexisip/configmanager.hh"
-#include "flexisip/module-router.hh"
 #include "http-mock/http-mock.hh"
 #include "server/mysql/mysql-server.hh"
 #include "test-patterns/test.hh"
@@ -49,6 +46,14 @@ using namespace flexisip::tester::http_mock;
 
 optional<MysqlServer> sDbServer{nullopt};
 
+RestClient getRestClient(sofiasip::SuRoot& root, const string& host, int port, const string& apiKey) {
+	const auto http2Client = Http2Client::make(root, host, to_string(port));
+	return RestClient{http2Client, HttpHeaders{
+	                                   {"accept", "application/json"},
+	                                   {"x-api-key"s, apiKey},
+	                               }};
+}
+
 void callToConference() {
 	const auto proxy = makeAndStartProxy();
 	const auto& agent = proxy->getAgent();
@@ -56,8 +61,8 @@ void callToConference() {
 	HttpMock flexiapiServer{{"/"}, &eventLogRequestsReceivedCount};
 	int port = flexiapiServer.serveAsync();
 	BC_HARD_ASSERT_TRUE(port > -1);
-	agent->setEventLogWriter(std::make_unique<FlexiStatsEventLogWriter>(*agent->getRoot(), "127.0.0.1", to_string(port),
-	                                                                    "", "aRandomApiToken"));
+	agent->setEventLogWriter(std::make_unique<FlexiStatsEventLogWriter>(
+	    getRestClient(*agent->getRoot(), "127.0.0.1", port, "aRandomApiToken"), ""));
 	const ClientBuilder builder{proxy->getAgent()};
 	const auto johan = builder.build("sip:johan@sip.example.org");
 	const string expectedConferenceId = "expected-conf-id";
@@ -111,7 +116,7 @@ void messageToChatroomClearText() {
 	HttpMock flexiapiServer{{"/"}, &eventLogRequestsReceivedCount};
 	int port = flexiapiServer.serveAsync();
 	agent->setEventLogWriter(
-	    std::make_unique<FlexiStatsEventLogWriter>(*agent->getRoot(), "127.0.0.1", to_string(port), "/", "toktok"));
+	    std::make_unique<FlexiStatsEventLogWriter>(getRestClient(*agent->getRoot(), "127.0.0.1", port, "toktok"), "/"));
 	const TestConferenceServer confServer(*proxy);
 	const auto before = chrono::system_clock::now();
 
