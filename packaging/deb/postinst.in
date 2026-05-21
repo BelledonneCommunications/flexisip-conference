@@ -3,10 +3,21 @@
 # Set configuration directory permissions
 chmod 750 @FLEXISIP_CONFIGURATION_FOLDER_INSTALL_LOCATION@
 
-# If first installation then use rewrite-config from flexisip's configuration file to generate the correct new config file
-if [ "$1" = "configure" ] && [ -z "$2" ] && [ -r "/etc/flexisip/flexisip.conf" ]; then
-	mv @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@ @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@.default || :
-	@FLEXISIP_CONFERENCE_EXECUTABLE_INSTALL_LOCATION@ -c "/etc/flexisip/flexisip.conf" --rewrite-config > @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@ || :
+# First installation migrations
+if [ "$1" = "configure" ] && [ -z "$2" ]; then
+
+    # Use rewrite-config from Flexisip's configuration file to generate the correct new config file
+    if [ -r "/etc/flexisip/flexisip.conf" ]; then
+        mv @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@ @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@.default || :
+        @FLEXISIP_CONFERENCE_EXECUTABLE_INSTALL_LOCATION@ -c "/etc/flexisip/flexisip.conf" --rewrite-config > @FLEXISIP_CONFIGURATION_FILE_INSTALL_LOCATION@ || :
+    fi
+
+    # Copy the "uuid" file from Flexisip
+    if [ -r "/var/opt/belledonne-communications/lib/flexisip/uuid" ]; then
+        mkdir -p @DEFAULT_LIB_DIR@ -m 750 || :
+        cp "/var/opt/belledonne-communications/lib/flexisip/uuid" @DEFAULT_LIB_DIR@ || :
+    fi
+
 fi
 
 # Try to restart daemon after upgrade
