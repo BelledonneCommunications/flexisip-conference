@@ -56,8 +56,8 @@
 
 #include <tclap/CmdLine.h>
 
-#include <flexisip-conference/flexisip-conference-version.h>
 #include <flexisip-conference-config.h>
+#include <flexisip-conference/flexisip-conference-version.h>
 #include <flexisip/logmanager.hh>
 #include <flexisip/module.hh>
 #include <flexisip/sofia-wrapper/su-root.hh>
@@ -333,9 +333,8 @@ static string version() {
 #if ENABLE_REDIS
 	options.emplace_back("Redis");
 #endif
-options.emplace_back("Soci");
-options.emplace_back("Conference");
-
+	options.emplace_back("Soci");
+	options.emplace_back("Conference");
 
 	if (!options.empty()) version << " compiled with " << string_utils::join(options, 0, " - ");
 	return version.str();
@@ -530,8 +529,8 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 		throw BadConfiguration{
 		    "No configuration file found at '" + configFile.getValue() +
 		        "'. A default 'flexisip-conference.conf' file should be installed in '" + CONFIG_DIR +
-		        "'. Please edit it and restart flexisip-conference when ready. Alternatively, a default configuration file can be "
-		        "generated using '--dump-default all'.",
+		        "'. Please edit it and restart flexisip-conference when ready. Alternatively, a default configuration "
+		        "file can be generated using '--dump-default all'.",
 		};
 	}
 
@@ -607,7 +606,8 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	    .root = root,
 	});
 
-	logger.message(kLogPrefix, __func__, "Starting Flexisip-" + fName + " server [version: " FLEXISIP_CONFERENCE_GIT_VERSION "]");
+	logger.message(kLogPrefix, __func__,
+	               "Starting Flexisip-" + fName + " server [version: " FLEXISIP_CONFERENCE_GIT_VERSION "]");
 
 	logger.setContextualFilter(globalCfg->get<ConfigString>("contextual-log-filter")->read());
 	logger.setContextualLevel(
@@ -672,8 +672,7 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 
 	auto cleanupTasks = std::vector<std::unique_ptr<AsyncCleanup>>();
 	if (conferenceServer) {
-		if (auto cleanup = conferenceServer->stop())
-			cleanupTasks.emplace_back(std::move(cleanup));
+		if (auto cleanup = conferenceServer->stop()) cleanupTasks.emplace_back(std::move(cleanup));
 	}
 
 	constexpr auto timeout = 5s;
