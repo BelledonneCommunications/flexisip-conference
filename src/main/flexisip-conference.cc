@@ -460,7 +460,7 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 
 	// First configuration of the logger using command line arguments.
 	logger.configure({
-	    .enableStandardOutput = !disableStdout,
+	    .enableStandardOutput = !(disableStdout || rewriteConf),
 	    .level = useDebug ? BCTBX_LOG_DEBUG : BCTBX_LOG_WARNING,
 	    .enableSyslog = disableStdout,
 	    .syslogLevel = BCTBX_LOG_ERROR,
