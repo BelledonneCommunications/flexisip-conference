@@ -32,32 +32,40 @@ The following changes are made in comparison to the conference server released i
     - Add support for C++20.
     - Add support for Ubuntu 26.04.
 
-- **Global:** Parameter `global/watchdog-notify-interval` set the interval between notifications of a flexisip service to the watchdog of SystemD.
-- **All servers:** Option `--disable-stdout` in command line to not display the log in standard output.
+- **Global:** Parameter `global/watchdog-notify-interval` set the interval between notifications of a flexisip service
+    to the watchdog of SystemD.
+- **Command line:** Option `--disable-stdout` in command line to not display the log in standard output.
 
 
 ### [Changed]
-- **Service:** The Flexisip services are now managed and started directly by SystemD. Service behavior is configured in the SystemD unit files. By default, a service notifies SystemD once startup is complete (using `Type=notify`). The SystemD watchdog is then enabled, and the service's main loop periodically notifies the watchdog to confirm that the process is alive and not blocked. The watchdog timeout is configured in the service's unit file by `WatchdogSec`, while the main loop notification interval is set via the global parameter `watchdog-notify-interval`. Flexisip now uses `Restart=on-failure` in its SystemD service units. This ensures that if a service crashes, exits with a non-zero status or fails to notify the watchdog before the timeout, SystemD automatically restarts it.
+- **Service:** The Flexisip services are now managed and started directly by SystemD. Service behavior is configured in
+    the SystemD unit files. By default, a service notifies SystemD once startup is complete (using `Type=notify`). The
+    SystemD watchdog is then enabled, and the service's main loop periodically notifies the watchdog to confirm that the
+    process is alive and not blocked. The watchdog timeout is configured in the service's unit file by `WatchdogSec`, 
+    while the main loop notification interval is set via the global parameter `watchdog-notify-interval`. Flexisip now
+    uses `Restart=on-failure` in its SystemD service units. This ensures that if a service crashes, exits with a
+    non-zero status or fails to notify the watchdog before the timeout, SystemD automatically restarts it.
 
 ### [Deprecated]
 - **Global:** Parameter `global/auto-respawn` no longer has any effect.
 
 ### [Fixed]
 - **Redis client:**
-  - Wait 1 second before retrying to connect when the connection to the server fails instead of retrying immediately.
+    - Wait 1 second before retrying to connect when the connection to the server fails instead of retrying immediately.
 
 ### [Removed]
 - **Conference:**
     - Parameter `conference-server/conference-factory-uri` (deprecated in 2.1.0)
+    - Parameter `conference-server/conference-factory-uri` (deprecated in Flexisip 2.1.0)
 - **Configuration:** Parameters of type `StringList` can no longer be declared using the character `','` to separate
   each element.
 - **Debian 11:** Support discontinued, as distribution will reach its end-of-life (2026-08-31).
 - **Ubuntu 22.04:** Support discontinued
 - **Global:**
-  - Option `--daemon` in flexisip services start command
-  - Parameter `global/tls-certificates-dir` (deprecated in 2.2.0)
-  - `tls-certificates-dir` was removed from transports parameters (deprecated in 2.2.0)
+    - Option `--daemon` in flexisip services start command
+    - Parameter `global/tls-certificates-dir` (deprecated in Flexisip 2.2.0)
+    - `tls-certificates-dir` was removed from transports parameters (deprecated in 2.2.0)
 - **Registrar:** 
     - Unused `ctdumper` and `serializer` tools.
-    - MSGPACK feature (deprecated in 2.4.0).
+    - MSGPACK feature (deprecated in Flexisip 2.4.0).
 - **All servers:** The launcher and watchdog processus are replaced by the SystemD startup with `Type=notify` and its watchdog.
