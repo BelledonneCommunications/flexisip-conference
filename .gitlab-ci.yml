@@ -16,13 +16,13 @@ variables:
   DEFAULT_PACKAGING_CMAKE_OPTIONS: '-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications/flexisip-conference -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DLOGROTATE_DIR=/etc/logrotate.d -DENABLE_G729=ON'
 
   # Docker image version
-  ARCHLINUX_IMAGE_VERSION: 20251203_add_curl
-  ROCKY_8_IMAGE_VERSION: 20260227_add_systemd
-  ROCKY_9_IMAGE_VERSION: 20260227_add_systemd
-  DEBIAN_12_IMAGE_VERSION: 20260227_add_systemd
-  DEBIAN_13_IMAGE_VERSION: 20260227_add_systemd
-  UBUNTU_24_04_IMAGE_VERSION: 20260428_add_dpkgdev
-  UBUNTU_26_04_IMAGE_VERSION: 20260424_init
+  ARCHLINUX_IMAGE_VERSION: 20260430_add_squid_proxy
+  ROCKY_8_IMAGE_VERSION: 20260430_add_squid_proxy
+  ROCKY_9_IMAGE_VERSION: 20260515_upgrade_to_boost_1_81
+  DEBIAN_12_IMAGE_VERSION: 20260430_add_squid_proxy
+  DEBIAN_13_IMAGE_VERSION: 20260430_add_squid_proxy
+  UBUNTU_24_04_IMAGE_VERSION: 20260430_add_squid_proxy
+  UBUNTU_26_04_IMAGE_VERSION: 20260430_add_squid_proxy
 
 #https://docs.gitlab.com/ee/ci/yaml/index.html#workflow
 workflow:
