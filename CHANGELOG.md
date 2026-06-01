@@ -71,3 +71,4 @@ The following changes are made in comparison to the conference server released i
     - Unused `ctdumper` and `serializer` tools.
     - MSGPACK feature (deprecated in Flexisip 2.4.0).
 - **All servers:** The launcher and watchdog processus are replaced by the SystemD startup with `Type=notify` and its watchdog.
+- **Command line:** Option `--server` in command line since the only choice is `conference`.

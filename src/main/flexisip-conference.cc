@@ -359,13 +359,6 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	TCLAP::CmdLine cmd("", ' ', version());
 	// TCLAP executes exit() when processing ExitException, so deactivate exceptions management.
 	cmd.setExceptionHandling(false);
-	TCLAP::ValueArg<string> functionName("", "server",
-	                                     "Server to execute: "
-#if ENABLE_CONFERENCE
-	                                     "'conference',"
-#endif
-	                                     " or 'all'.",
-	                                     TCLAP::ValueArgOptional, "", "server function", cmd);
 
 #define DEFAULT_CONFIG_FILE CONFIG_DIR "/flexisip-conference.conf"
 
