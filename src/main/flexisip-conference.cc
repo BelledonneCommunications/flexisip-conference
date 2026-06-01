@@ -330,9 +330,7 @@ static string version() {
 #if ENABLE_SNMP
 	options.emplace_back("SNMP");
 #endif
-#if ENABLE_REDIS
 	options.emplace_back("Redis");
-#endif
 	options.emplace_back("Soci");
 	options.emplace_back("Conference");
 

@@ -26,8 +26,6 @@
 #cmakedefine ENABLE_SYSTEMD 1
 #cmakedefine ENABLE_SNMP 1
 #cmakedefine ENABLE_LIBODB_MYSQL 1
-#cmakedefine ENABLE_REDIS 1
-#cmakedefine ENABLE_SOCI 1
 #cmakedefine ENABLE_UNIT_TESTS 1
 
 #cmakedefine HAVE_ARC4RANDOM 1
