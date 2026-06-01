@@ -23,8 +23,8 @@
 
 #include "belle-sip/utils.h"
 #include "exceptions/bad-configuration.hh"
-#include "flexisip/configmanager.hh"
 #include "flexisip-conference/flexisip-conference-version.h"
+#include "flexisip/configmanager.hh"
 #include "registrar/binding-parameters.hh"
 #include "registrar/extended-contact.hh"
 #include "registrar/record.hh"
@@ -71,8 +71,7 @@ void ConferenceServer::_init() {
 	auto configLinphone = Factory::get()->createConfig("");
 	configLinphone->setString("sip", "bind_address", bindAddress);
 	configLinphone->setBool("misc", "conference_server_enabled", true);
-	configLinphone->setBool("misc", "enable_one_to_one_chat_room",
-	                        config->get<ConfigBoolean>("enable-one-to-one-chat-room")->read());
+	configLinphone->setBool("misc", "enable_one_to_one_chat_room", true);
 	configLinphone->setBool("misc", "empty_chat_room_deletion",
 	                        config->get<ConfigBoolean>("empty-chat-room-deletion")->read());
 
@@ -683,14 +682,6 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	        "last participant has left.",
 	        "30d",
 	    },
-
-	    // Deprecated parameters:
-	    {
-	        Boolean,
-	        "enable-one-to-one-chat-room",
-	        "Whether one-to-one chat room creation is allowed or not.",
-	        "true",
-	    },
 	    config_item_end,
 	};
 
@@ -708,8 +699,6 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	    0);
 	auto* s = root.addChild(std::move(uS));
 	s->addChildrenValues(items);
-	s->get<ConfigBoolean>("enable-one-to-one-chat-room")
-	    ->setDeprecated("2022-09-21", "2.2.0", "This parameter will be forced to 'true' in further versions.");
 });
 } // namespace
 
