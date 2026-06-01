@@ -36,7 +36,10 @@ The following changes are made in comparison to the conference server released i
 
 - **Global:** Parameter `global/watchdog-notify-interval` set the interval between notifications of a flexisip service
     to the watchdog of SystemD.
-- **Command line:** Option `--disable-stdout` in command line to not display the log in standard output.
+- **Command line:**
+    - Option `--disable-stdout` in command line to not display the log in standard output.
+    - Option `--remove-deprecated` in command line. When dumping the configuration, all deprecated parameters will be 
+    removed even if they have a value explicitly set.
 
 
 ### [Changed]
