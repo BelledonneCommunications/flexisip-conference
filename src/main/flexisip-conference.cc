@@ -486,6 +486,35 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	auto cfg = make_shared<ConfigManager>();
 	cfg->setOverrideMap(oset);
 
+	// Deprecate modules and sections from Flexisip that are not needed by the conference server
+	const vector<string> sectionsToDeprecate{
+	    "cluster",
+	    "event-logs",
+	    "mdns-register",
+	    "regevent-server",
+	    "stun-server",
+	    "global::flexiapi",
+	    "inter-domain-connections",
+	};
+	const vector<string> modulesToKeep{"module::Registrar"};
+
+	const string modulePrefix{"module::"};
+	for (const auto& section : cfg->getRoot()->getChildren()) {
+		if (ranges::find(sectionsToDeprecate, section->getName()) != sectionsToDeprecate.end()) {
+			section->setDeprecated("2026-06-01", "1.0.0",
+			                       "This section is not needed for the conference server since it was separated from "
+			                       "the other Flexisip servers.");
+			continue;
+		}
+
+		const auto& sectionName = section->getName();
+		if (!sectionName.rfind(modulePrefix, 0) && ranges::find(modulesToKeep, sectionName) == modulesToKeep.end()) {
+			section->setDeprecated(
+			    "2026-06-01", "1.0.0",
+			    "Section not needed by the conference server since it was separated from the other Flexisip servers.");
+		}
+	}
+
 	if (const auto module = dumpAll ? "all" : dumpDefault.getValue(); !module.empty()) {
 		dump_config(*cfg, module, displayExperimental, true, removeDeprecated, dumpFormat.getValue());
 		return EXIT_SUCCESS;
