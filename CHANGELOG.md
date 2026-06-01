@@ -57,8 +57,8 @@ The following changes are made in comparison to the conference server released i
 
 ### [Removed]
 - **Conference:**
-    - Parameter `conference-server/conference-factory-uri` (deprecated in 2.1.0)
     - Parameter `conference-server/conference-factory-uri` (deprecated in Flexisip 2.1.0)
+    - Parameter `conference-server/enable-one-to-one-chat-room` (deprecated in Flexisip 2.2.0)
 - **Configuration:** Parameters of type `StringList` can no longer be declared using the character `','` to separate
   each element.
 - **Debian 11:** Support discontinued, as distribution will reach its end-of-life (2026-08-31).
