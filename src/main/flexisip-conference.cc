@@ -588,7 +588,9 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	const auto& logFilename = globalCfg->get<ConfigString>("log-filename")->read();
 	logger.configure({
 	    .enableStandardOutput = !disableStdout,
-	    .level = useDebug ? BCTBX_LOG_DEBUG : LogManager::logLevelFromName(logLevel),
+	    .level = rewriteConf ? BCTBX_LOG_ERROR
+	             : useDebug  ? BCTBX_LOG_DEBUG
+	                         : LogManager::logLevelFromName(logLevel),
 	    .enableSyslog = useSyslog,
 	    .syslogLevel = LogManager::logLevelFromName(globalCfg->get<ConfigString>("syslog-level")->read()),
 	    .enableUserErrors = useDebug ? true : globalCfg->get<ConfigBoolean>("user-errors-logs")->read(),
