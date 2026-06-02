@@ -478,12 +478,6 @@ namespace {
 auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct& root) {
 	ConfigItemDescriptor items[] = {
 	    {
-	        Boolean,
-	        "enabled",
-	        "Enable conference server", /* Do we need this ? The systemd enablement should be sufficient. */
-	        "true",
-	    },
-	    {
 	        String,
 	        "transport",
 	        "Unique SIP URI on which the server is listening.",
@@ -682,6 +676,14 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	        "last participant has left.",
 	        "30d",
 	    },
+
+	    // Deprecated parameters
+	    {
+	        Boolean,
+	        "enabled",
+	        "Enable conference server", /* Do we need this ? The systemd enablement should be sufficient. */
+	        "true",
+	    },
 	    config_item_end,
 	};
 
@@ -699,6 +701,7 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	    0);
 	auto* s = root.addChild(std::move(uS));
 	s->addChildrenValues(items);
+	s->get<ConfigBoolean>("enabled")->setDeprecated("2026-06-02", "1.0.0", "This parameter is always true.");
 });
 } // namespace
 
