@@ -45,8 +45,7 @@ public:
 	                 const std::shared_ptr<ConfigManager>& cfg,
 	                 const std::shared_ptr<RegistrarDb>& registrarDb)
 	    : ServiceServer{std::forward<SuRootPtr>(root)}, mPath{std::forward<StrT>(pathUri)}, mConfigManager{cfg},
-	      mRegistrarDb{registrarDb}, mSubscriptionHandler{*this, *mRegistrarDb} {
-	}
+	      mRegistrarDb{registrarDb}, mSubscriptionHandler{*this, *mRegistrarDb} {}
 
 	virtual void bindAddresses();
 
@@ -96,7 +95,8 @@ private:
 	static constexpr std::string_view mLogPrefix{"ConferenceServer"};
 
 	static void enableSelectedCodecs(const std::list<std::shared_ptr<linphone::PayloadType>>& codecs,
-	                                 const std::list<std::string>& mimeTypes);
+	                                 std::list<std::string>&& mimeTypes,
+	                                 const ConfigValue* config);
 	static void ensureDirectoryCreated(const std::filesystem::path& directory);
 
 	void loadFactoryUris();

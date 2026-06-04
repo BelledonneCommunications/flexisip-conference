@@ -33,6 +33,9 @@ The following changes are made in comparison to the conference server released i
       join it.
     - Add support for end-to-end conference encryption by installing the EKT server plugin. For customers under a
       proprietary license, this functionality is under a specific license.
+    - Add parameter 'supported-audio-codecs' to set the list of supported audio codecs for audio/video conferences.
+      if 'audio-engine-mode' is set to 'sfu', then only the first codec will be used.
+    - Add parameter 'supported-video-codec' to set the supported video codec for video conferences.
 - **Build:**
     - Add support for C++20.
     - Add support for Ubuntu 26.04.

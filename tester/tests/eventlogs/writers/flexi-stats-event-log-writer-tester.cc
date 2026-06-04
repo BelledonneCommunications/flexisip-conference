@@ -117,7 +117,8 @@ void messageToChatroomClearText() {
 	int port = flexiapiServer.serveAsync();
 	agent->setEventLogWriter(
 	    std::make_unique<FlexiStatsEventLogWriter>(getRestClient(*agent->getRoot(), "127.0.0.1", port, "toktok"), "/"));
-	const TestConferenceServer confServer(*proxy);
+	TestConferenceServer confServer(*proxy);
+	confServer.start();
 	const auto before = chrono::system_clock::now();
 
 	clemChat->createMessageFromUtf8("💃🏼")->send();

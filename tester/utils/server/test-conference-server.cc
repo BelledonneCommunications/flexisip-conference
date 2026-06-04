@@ -33,8 +33,7 @@ using namespace std;
 namespace flexisip::tester {
 
 TestConferenceServer::TestConferenceServer(const Server& proxy)
-    : TestConferenceServer(*proxy.getAgent(), proxy.getConfigManager(), proxy.getRegistrarDb()) {
-}
+    : TestConferenceServer(*proxy.getAgent(), proxy.getConfigManager(), proxy.getRegistrarDb()) {}
 TestConferenceServer::TestConferenceServer(const Agent& agent,
                                            const std::shared_ptr<ConfigManager>& cfg,
                                            const std::shared_ptr<RegistrarDb>& registrarDb)
@@ -43,7 +42,6 @@ TestConferenceServer::TestConferenceServer(const Agent& agent,
 	mConfServer->getServerConf()
 	    .get<ConfigString>("outbound-proxy")
 	    ->set(cfg->getRoot()->get<GenericStruct>("global")->get<ConfigStringList>("transports")->read().front());
-	mConfServer->init();
 }
 
 TestConferenceServer::~TestConferenceServer() {
@@ -51,6 +49,10 @@ TestConferenceServer::~TestConferenceServer() {
 	std::ignore = mConfServer->stop();
 	mConfServer.reset();
 	mRoot->step(200ms);
+}
+
+void TestConferenceServer::start() {
+	mConfServer->init();
 }
 
 void TestConferenceServer::clearLocalDomainList() {

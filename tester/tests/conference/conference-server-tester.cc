@@ -28,6 +28,7 @@
 #include "chat-room-builder.hh"
 #include "client-builder.hh"
 #include "client-core.hh"
+#include "conference/chatroom-prefix.hh"
 #include "core-assert.hh"
 #include "flexisip/registrar/registar-listeners.hh"
 #include "registrar/binding-parameters.hh"
@@ -124,7 +125,8 @@ void conferenceServerBindsChatroomsFromDBOnInit() {
 		return confServerCfg->get<ConfigString>("transport")->read();
 	};
 	{ // Populate conference server's DB
-		const TestConferenceServer conferenceServer(*agent, confMan, regDb);
+		TestConferenceServer conferenceServer(*agent, confMan, regDb);
+		conferenceServer.start();
 		BC_HARD_ASSERT_CPP_EQUAL(records.size(), 2 /* users */ + 1 /* factory */ + 1 /* focus */);
 		const auto& inMyRoom = you.getMe();
 		listener->setChatrooms({
@@ -149,7 +151,8 @@ void conferenceServerBindsChatroomsFromDBOnInit() {
 	(const_cast<RegistrarDbInternal*>(registrarBackend))->clearAll();
 
 	// Spin it up again
-	const TestConferenceServer conferenceServer(*agent, confMan, regDb);
+	TestConferenceServer conferenceServer(*agent, confMan, regDb);
+	conferenceServer.start();
 
 	// The conference server restored its chatrooms from DB and bound them back on the Registrar
 	// Chat rooms are now only identified by the parameter conf-id therefore the registrarDb doesn't grow anymore
@@ -202,7 +205,8 @@ void conferenceServerClearsOldBindingsOnInit() {
 		BC_ASSERT_CPP_EQUAL(contacts.latest()->get()->urlAsString(), unexpectedContact);
 	}
 
-	const TestConferenceServer conferenceServer(proxy);
+	TestConferenceServer conferenceServer(proxy);
+	conferenceServer.start();
 
 	BC_ASSERT_CPP_EQUAL(records.size(), 1 /* factory */ + 1 /* focus */);
 	const auto& contacts = records.begin()->second->getExtendedContacts();
@@ -239,6 +243,7 @@ void inviteResentOnReconnect() {
 	auto& agent = proxy.getAgent();
 	const auto& regDb = proxy.getRegistrarDb();
 	auto conferenceServer = TestConferenceServer(*agent, proxy.getConfigManager(), regDb);
+	conferenceServer.start();
 	auto clientBuilder = ClientBuilder(agent);
 	clientBuilder.setConferenceFactoryAddress(linphone::Factory::get()->createAddress(confFactoryUri))
 	    .setLimeX3DH(OnOff::Off);
@@ -360,6 +365,7 @@ void oldChatroomSupport() {
 	BC_ASSERT(asserter.iterateUpTo(10, [&listener] { return listener->recorded; }));
 
 	TestConferenceServer conf{proxy};
+	conf.start();
 	BC_ASSERT_CPP_EQUAL(listener->updated, false);
 
 	// Bind chatroom with a new uuid, the previous contact must be updated.

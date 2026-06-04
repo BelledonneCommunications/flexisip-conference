@@ -108,8 +108,9 @@ void ConferenceServer::_init() {
 	// To make sure contact address is not fixed by belle-sip.
 	configLinphone->setBool("net", "enable_nat_helper", false);
 
+	const auto* audioEngineMode = config->get<ConfigString>("audio-engine-mode");
 	configuration_utils::configureMediaEngineMode(configLinphone, configuration_utils::MediaEngine::AUDIO,
-	                                              config->get<ConfigString>("audio-engine-mode"));
+	                                              audioEngineMode);
 	configuration_utils::configureMediaEngineMode(configLinphone, configuration_utils::MediaEngine::VIDEO,
 	                                              config->get<ConfigString>("video-engine-mode"));
 
@@ -153,11 +154,21 @@ void ConferenceServer::_init() {
 
 	mCore->setUseFiles(true); // No sound card shall be used in calls.
 
-	// Let the conference server work with all liblinphone's default audio codecs (opus, speex, pcmu, pcma)
-	// enableSelectedCodecs(mCore->getAudioPayloadTypes(), {"opus", "speex"});
+	// Configure supported audio codecs. Only use the first one if audio-engine-mode is set to 'sfu'.
+	const auto* audioCodecsParam = config->get<ConfigStringList>("supported-audio-codecs");
+	auto audioCodecs = audioCodecsParam->read();
+	if (audioEngineMode->read() == "sfu") {
+		enableSelectedCodecs(mCore->getAudioPayloadTypes(), {audioCodecs.front()}, audioCodecsParam);
+	} else {
+		enableSelectedCodecs(mCore->getAudioPayloadTypes(), std::move(audioCodecs), audioCodecsParam);
+	}
 
-	// We have to restrict for video because as of today only VP8 is supported.
-	enableSelectedCodecs(mCore->getVideoPayloadTypes(), {"VP8"});
+	// Configure supported video codec.
+	const auto* videoCodecParam = config->get<ConfigString>("supported-video-codec");
+	const auto videoCodec = videoCodecParam->read();
+	if (videoCodec != "vp8")
+		throw BadConfigurationValue{videoCodecParam, "only VP8 is supported as of today for video conferences"};
+	enableSelectedCodecs(mCore->getVideoPayloadTypes(), {videoCodec}, videoCodecParam);
 
 	const auto encryption = config->get<ConfigString>("encryption")->read();
 	const auto encryptionMode = StringUtils::string2MediaEncryption(encryption);
@@ -251,13 +262,21 @@ void ConferenceServer::_init() {
 }
 
 void ConferenceServer::enableSelectedCodecs(const list<shared_ptr<linphone::PayloadType>>& codecs,
-                                            const list<string>& mimeTypes) {
+                                            list<string>&& mimeTypes,
+                                            const ConfigValue* config) {
 	for (const auto& codec : codecs) {
-		if (find(mimeTypes.begin(), mimeTypes.end(), codec->getMimeType()) != mimeTypes.end()) {
+		if (ranges::find_if(mimeTypes.begin(), mimeTypes.end(), [&codec](const auto& mime) {
+			    return string_utils::iequals(codec->getMimeType(), mime);
+		    }) != mimeTypes.end()) {
 			codec->enable(true);
+			mimeTypes.remove(string_utils::toLower(codec->getMimeType()));
 		} else {
 			codec->enable(false);
 		}
+	}
+
+	if (!mimeTypes.empty()) {
+		throw BadConfigurationValue{config, "unsupported codecs in the list: " + StringUtils::join(mimeTypes)};
 	}
 }
 
@@ -576,6 +595,25 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	        "Valid values: 'audio', 'video', 'text'.\n"
 	        "Example: audio video text",
 	        "text",
+	    },
+	    {
+	        StringList,
+	        "supported-audio-codecs",
+	        "List of audio codecs supported by the server.\n"
+	        "This allows to specify which audio codecs this instance is able to provide for audio/video conferences.\n"
+	        "If audio-engine-mode is set to 'sfu' then only the first codec is used.\n"
+	        "This parameter cannot be empty.\n"
+	        "Example: opus speex pcmu pcma",
+	        "opus speex pcmu pcma",
+	    },
+	    {
+	        String,
+	        "supported-video-codec",
+	        "Video codec supported by the server.\n"
+	        "This allows to specify which video codec this instance is able to provide for video conferences.\n"
+	        "This parameter cannot be empty.\n"
+	        "Valid values: 'vp8'.",
+	        "vp8",
 	    },
 	    {
 	        String,

@@ -22,6 +22,7 @@
 
 add_library(flexisip_conference_tester_utils
     server/test-conference-server.cc server/test-conference-server.hh
+    conference-builder.cc conference-builder.hh
 )
 
 target_include_directories(flexisip_conference_tester_utils PUBLIC

@@ -36,6 +36,8 @@ public:
 	                     const std::shared_ptr<RegistrarDb>& registrarDb);
 	~TestConferenceServer();
 
+	void start();
+
 	void clearLocalDomainList();
 
 	auto getChatrooms() {

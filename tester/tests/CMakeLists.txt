@@ -21,6 +21,7 @@
 ############################################################################
 
 add_executable(flexisip_conference_tester
+	conference/codecs-tester.cc
 	conference/conference-server-tester.cc
 	conference/registration-subscription-tester.cc
 	main-tester.cc
