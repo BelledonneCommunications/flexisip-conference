@@ -45,11 +45,11 @@ The following changes are made in comparison to the conference server released i
 ### [Changed]
 - **Service:** The Flexisip services are now managed and started directly by SystemD. Service behavior is configured in
     the SystemD unit files. By default, a service notifies SystemD once startup is complete (using `Type=notify`). The
-    SystemD watchdog is then enabled, and the service's main loop periodically notifies the watchdog to confirm that the
-    process is alive and not blocked. The watchdog timeout is configured in the service's unit file by `WatchdogSec`, 
-    while the main loop notification interval is set via the global parameter `watchdog-notify-interval`. Flexisip now
-    uses `Restart=on-failure` in its SystemD service units. This ensures that if a service crashes, exits with a
-    non-zero status or fails to notify the watchdog before the timeout, SystemD automatically restarts it.
+    service's main loop periodically notifies the SystemD watchdog to confirm that the process is alive and not blocked.
+    The watchdog timeout can be enabled by configuring `WatchdogSec` in the service's unit file, while the main loop
+    notification interval is set via the global parameter `watchdog-notify-interval`. Flexisip now uses
+    `Restart=on-failure` in its SystemD service units. This ensures that if a service crashes, exits with a non-zero
+    status or fails to notify the watchdog before the timeout, SystemD automatically restarts it.
 
 ### [Deprecated]
 - **Global:** Parameter `global/auto-respawn` no longer has any effect.
