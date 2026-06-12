@@ -74,6 +74,8 @@ void ConferenceServer::_init() {
 	configLinphone->setBool("misc", "enable_one_to_one_chat_room", true);
 	configLinphone->setBool("misc", "empty_chat_room_deletion",
 	                        config->get<ConfigBoolean>("empty-chat-room-deletion")->read());
+	// Disable call logs to avoid memory accumulation
+	configLinphone->setInt("misc", "history_max_size", 0);
 
 	if (mMediaConfig.textEnabled) {
 		const auto* dbConnectionStringParam = config->get<ConfigString>("database-connection-string");
@@ -89,12 +91,11 @@ void ConferenceServer::_init() {
 		configLinphone->setString("storage", "backend", config->get<ConfigString>("database-backend")->read());
 		configLinphone->setString("storage", "uri", dbUri);
 		configLinphone->setBool("misc", "keep_gruu_in_conference_address", true);
+		configLinphone->setString("storage", "zrtp_secrets_db_uri", "null");
 	} else {
-		configLinphone->setString("storage", "uri", "null");
+		// Nothing to do, the databases will be disabled directly in the core
 	}
 
-	configLinphone->setString("storage", "call_logs_db_uri", "null");
-	configLinphone->setString("storage", "zrtp_secrets_db_uri", "null");
 	configLinphone->setString("lime", "x3dh_db_path", ":memory:");
 
 	configLinphone->setInt("misc", "max_calls", 1000);
@@ -123,6 +124,7 @@ void ConferenceServer::_init() {
 	mCore->setInCallTimeout(config->get<ConfigDuration<chrono::seconds>>("call-timeout")->readAndCast().count());
 	mCore->enableRtpBundle(true);
 	mCore->enableEchoCancellation(false);
+	if (!mMediaConfig.textEnabled) mCore->enableDatabase(false);
 
 	const auto* noRTPTimeoutParameter = config->get<ConfigDuration<chrono::seconds>>("no-rtp-timeout");
 	const auto noRTPTimeout = noRTPTimeoutParameter->read();
