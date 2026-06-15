@@ -488,7 +488,6 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 
 	// Deprecate modules and sections from Flexisip that are not needed by the conference server
 	const vector<string> sectionsToDeprecate{
-	    "cluster",
 	    "event-logs",
 	    "mdns-register",
 	    "regevent-server",
