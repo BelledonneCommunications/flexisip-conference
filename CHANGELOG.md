@@ -15,12 +15,17 @@ Group changes to describe their impact on the project, as follows:
 | Known Issues   | Issues whose fix has not been tested and cannot be included in this release |
 
 ## [1.1.0] - Alpha
+- **SDK version:** 5.6-alpha
 
 ### [Fixed]
 - Call logs are disabled to avoid memory accumulation
 
+## [1.0.1] - Hotfix
+- **SDK version:** 5.5.7
+
 ## [1.0.0] - Beta
 The following changes are made in comparison to the conference server released in Flexisip 2.5.1.
+- **SDK version:** 5.5-beta
 
 ### [Added]
 - **Conference server:**
