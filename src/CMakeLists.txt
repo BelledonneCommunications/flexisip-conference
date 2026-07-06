@@ -29,6 +29,8 @@ add_library(flexisip-conference
 	conference/conference-server.hh
 	conference/registration-subscription.cc
 	conference/registration-subscription.hh
+	conference/registration-subscription-factory.cc
+	conference/registration-subscription-factory.hh
 	conference/participant-registration-subscription-handler.cc
 	conference/participant-registration-subscription-handler.hh
 	main/flexisip-conference.hh

@@ -17,56 +17,41 @@
 */
 
 #include "participant-registration-subscription-handler.hh"
-#include "conference/conference-server.hh"
 
-using namespace flexisip;
+#include "conference/conference-server.hh"
+#include "registration-subscription-factory.hh"
+
 using namespace std;
 using namespace linphone;
 
-ParticipantRegistrationSubscriptionHandler::ParticipantRegistrationSubscriptionHandler(const ConferenceServer& server,
-                                                                                       RegistrarDb& registrarDb)
-    : mServer(server), mRegistrarDb{registrarDb} {
+namespace flexisip {
+
+namespace {
+
+string getSubscriptionKey(const shared_ptr<const Address>& address) {
+	return address->getUsername() + "@" + address->getDomain();
 }
 
-string ParticipantRegistrationSubscriptionHandler::getKey(const shared_ptr<const Address>& address) {
-	ostringstream ostr;
-	ostr << address->getUsername() << "@" << address->getDomain();
-	return ostr.str();
-}
+} // namespace
 
-void ParticipantRegistrationSubscriptionHandler::subscribe(const shared_ptr<ChatRoom>& chatRoom,
-                                                           const shared_ptr<const Address>& address) {
-	bool toSubscribe = true;
-	string key = getKey(address);
-	auto range = mSubscriptions.equal_range(key);
+void RegistrationSubscriptionStore::addSubscription(const shared_ptr<const Address>& address,
+                                                    const shared_ptr<RegistrationSubscription>& subscription) {
+	mSubscriptions.insert({getSubscriptionKey(address), subscription});
+};
 
+bool RegistrationSubscriptionStore::findSubscription(const shared_ptr<ChatRoom>& chatRoom,
+                                                     const shared_ptr<const Address>& address) {
+	const auto range = mSubscriptions.equal_range(getSubscriptionKey(address));
 	for (auto it = range.first; it != range.second; it++) {
-		if (it->second->getChatRoom() == chatRoom) {
-			toSubscribe = false;
-			break;
-		}
+		if (it->second->getChatRoom() == chatRoom) return true;
 	}
 
-	if (toSubscribe) {
-		const auto& domains = mServer.getLocalDomains();
-		shared_ptr<RegistrationSubscription> subscription;
+	return false;
+};
 
-		if (std::find(domains.begin(), domains.end(), address->getDomain()) != domains.end()) {
-			LOGD << "Subscribed address is local '" << address->asString() << "'";
-			subscription = make_shared<OwnRegistrationSubscription>(mServer, chatRoom, address, mRegistrarDb);
-		} else {
-			LOGD << "Subscribed address is external '" << address->asString() << "', subscribe to it";
-			subscription = make_shared<ExternalRegistrationSubscription>(mServer, chatRoom, address);
-		}
-		mSubscriptions.insert(make_pair(key, subscription));
-		subscription->start();
-	}
-}
-
-void ParticipantRegistrationSubscriptionHandler::unsubscribe(const shared_ptr<ChatRoom>& chatRoom,
-                                                             const shared_ptr<const Address>& address) {
-	string key = getKey(address);
-	auto range = mSubscriptions.equal_range(key);
+void RegistrationSubscriptionStore::removeSubscription(const shared_ptr<linphone::ChatRoom>& chatRoom,
+                                                       const shared_ptr<const linphone::Address>& address) {
+	const auto range = mSubscriptions.equal_range(getSubscriptionKey(address));
 	for (auto it = range.first; it != range.second;) {
 		if (it->second->getChatRoom() == chatRoom) {
 			it->second->stop();
@@ -75,10 +60,51 @@ void ParticipantRegistrationSubscriptionHandler::unsubscribe(const shared_ptr<Ch
 			it++;
 		}
 	}
-}
+};
 
-void ParticipantRegistrationSubscriptionHandler::unsubscribeAll() {
+void RegistrationSubscriptionStore::removeAllSubscriptions() {
 	for (const auto& sub : mSubscriptions) {
 		sub.second->stop();
 	}
+	mSubscriptions.clear();
 }
+
+ParticipantRegistrationSubscriptionHandler::ParticipantRegistrationSubscriptionHandler(const ConferenceServer& server,
+                                                                                       RegistrarDb& registrarDb)
+    : mServer(server), mRegistrarDb{registrarDb}, mOwnFactory{make_shared<OwnRegistrationSubscriptionFactory>()},
+      mExternalFactory{make_shared<ExternalRegistrationSubscriptionFactory>()} {}
+
+void ParticipantRegistrationSubscriptionHandler::startSubscription(
+    const shared_ptr<RegistrationSubscriptionFactory>& factory,
+    const shared_ptr<ChatRoom>& chatRoom,
+    const shared_ptr<const Address>& address) {
+	const auto subscription = factory->create(mServer, mRegistrarDb, chatRoom, address);
+	mSubscriptionStore.addSubscription(address, subscription);
+	subscription->start();
+}
+
+void ParticipantRegistrationSubscriptionHandler::subscribe(const shared_ptr<ChatRoom>& chatRoom,
+                                                           const shared_ptr<const Address>& address) {
+	LOGD << "Address '" << address->asString() << "' and chatroom '" << chatRoom->getSubject() << "'";
+
+	if (!mSubscriptionStore.findSubscription(chatRoom, address)) {
+		const auto& domains = mServer.getLocalDomains();
+
+		if (find(domains.begin(), domains.end(), address->getDomain()) != domains.end()) {
+			startSubscription(mOwnFactory, chatRoom, address);
+		} else {
+			startSubscription(mExternalFactory, chatRoom, address);
+		}
+	}
+}
+
+void ParticipantRegistrationSubscriptionHandler::unsubscribe(const shared_ptr<ChatRoom>& chatRoom,
+                                                             const shared_ptr<const Address>& address) {
+	mSubscriptionStore.removeSubscription(chatRoom, address);
+}
+
+void ParticipantRegistrationSubscriptionHandler::unsubscribeAll() {
+	mSubscriptionStore.removeAllSubscriptions();
+}
+
+} // namespace flexisip

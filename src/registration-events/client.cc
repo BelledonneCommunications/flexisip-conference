@@ -34,16 +34,20 @@ using namespace reginfo;
 namespace flexisip::registration_event {
 
 Client::Client(const shared_ptr<ClientFactory>& factory, const shared_ptr<const Address>& to)
-    : mSubscribeEvent(), mFactory(factory), mTo(to->clone()), mListener(nullptr),
-      mLogPrefix(LogManager::makeLogPrefixForInstance(this, "Client")) {
+    : mFactory(factory), mTo(to->clone()),
+      mLogPrefix(LogManager::makeLogPrefixForInstance(this, "registration_event::Client")) {
 	mFactory->registerClient(*this);
 }
 
-void Client::subscribe() {
+void Client::subscribe(const shared_ptr<ClientListener>& listener) {
+	LOGD << "Subscribing to registration events for '" << mTo->asStringUriOnly() << "'";
 	if (mSubscribeEvent) {
-		LOGE << "Already subscribed";
+		LOGD << "Already subscribed to registration events: notifying listener of the current state";
+		// For performance reasons, only notify the new listener, not all listeners.
+		listener->onNotifyReceived(mParticipantDevices);
 		return;
 	}
+
 	mSubscribeEvent = mFactory->getCore()->createSubscribe(mTo, "reg", mFactory->getSubscriptionRefreshDelay().count());
 	mSubscribeEvent->addCustomHeader("Accept", "application/reginfo+xml");
 	mSubscribeEvent->setData(kEventKey, *this);
@@ -51,72 +55,77 @@ void Client::subscribe() {
 }
 
 void Client::unsubscribe() {
+	LOGD << "Unsubscribing from registration events for '" << mTo->asStringUriOnly() << "'";
 	if (!mSubscribeEvent) {
-		LOGE << "No subscription";
+		LOGD << "No existing subscription to registration events";
 		return;
 	}
+
 	mSubscribeEvent->unsetData(kEventKey);
 	mSubscribeEvent->terminate();
 	mSubscribeEvent = nullptr;
 }
 
 Client::~Client() {
+	LOGD << "Destroying client for '" << mTo->asStringUriOnly() << "'";
 	mFactory->unregisterClient(*this);
-	// It is not possible to call shared_from_this() from here because we are in the destructor,
-	// so not possible to remove us as a core listener. It is too late.
-	if (mSubscribeEvent) {
-		mSubscribeEvent->unsetData(kEventKey);
-		mSubscribeEvent->terminate();
-	}
-}
-
-void Client::setListener(ClientListener* listener) {
-	mListener = listener;
+	unsubscribe();
 }
 
 void Client::onNotifyReceived(const shared_ptr<const linphone::Content>& body) {
+	LOGD << "Received NOTIFY for '" << mTo->asStringUriOnly() << "'";
 	if (!body) throw runtime_error("Empty notify Content.");
 
 	istringstream data(body->getUtf8Text());
-
 	unique_ptr<Reginfo> ri(parseReginfo(data, Xsd::XmlSchema::Flags::dont_validate));
 
+	// Iterate through all registrations in the reginfo document, and find the one that matches the AOR we are
+	// subscribed to. As per RFC 3680 (§5.1), there may be multiple registrations in the document, but this client only
+	// manages one AOR at a time.
 	for (const auto& registration : ri->getRegistration()) {
+		if (registration.getAor() != mTo->asStringUriOnly()) continue;
+
 		if (registration.getState() == Registration::StateType::terminated) {
-			if (mListener) mListener->onNotifyReceived({}); // Notifying that 0 devices are registered.
-			continue;
+			// Notifying that 0 devices are registered.
+			notify([](ClientListener& listener) { listener.onNotifyReceived({}); });
+			mParticipantDevices.clear();
+			break;
 		}
 
-		list<shared_ptr<ParticipantDeviceIdentity>> participantDevices;
-		size_t refreshed = 0;
+		size_t refreshed{};
+		list<shared_ptr<ParticipantDeviceIdentity>> participantDevices{};
 		for (const auto& contact : registration.getContact()) {
-			auto partDeviceAddr = Factory::get()->createAddress(contact.getUri());
-			Contact::UnknownParamSequence ups = contact.getUnknownParam();
-			string displayName = contact.getDisplayName() ? contact.getDisplayName()->c_str() : string("");
+			const auto partDeviceAddr = Factory::get()->createAddress(contact.getUri());
+			const auto& unknownParams = contact.getUnknownParam();
+			const auto displayName = contact.getDisplayName() ? contact.getDisplayName()->c_str() : string("");
 
-			for (const auto& param : ups) {
+			for (const auto& param : unknownParams) {
 				if (param.getName() != "+org.linphone.specs") continue;
-				shared_ptr<ParticipantDeviceIdentity> identity =
-				    Factory::get()->createParticipantDeviceIdentity(partDeviceAddr, displayName);
 
+				const auto identity = Factory::get()->createParticipantDeviceIdentity(partDeviceAddr, displayName);
 				identity->setCapabilityDescriptor(list<string>{StringUtils::unquote(param)});
 
 				if (contact.getEvent() == reginfo::Event::refreshed) {
-					if (mListener) mListener->onRefreshed(identity);
+					notify([&identity](ClientListener& listener) { listener.onRefreshed(identity); });
 					refreshed++;
 				}
+
 				participantDevices.push_back(identity);
 				break;
 			}
 		}
 
 		if (refreshed < participantDevices.size()) {
-			if (mListener) mListener->onNotifyReceived(participantDevices);
+			notify([&participantDevices](ClientListener& listener) { listener.onNotifyReceived(participantDevices); });
 		} // else: Everything is refreshed, notifying a reception would be redundant.
+
+		mParticipantDevices = participantDevices;
 	}
 }
 
 void Client::onSubscriptionStateChanged(linphone::SubscriptionState state) {
+	LOGD << "Subscription state changed to '" << static_cast<int>(state) << "' for '" << mTo->asStringUriOnly() << "'";
+
 	switch (state) {
 		case SubscriptionState::None:
 		case SubscriptionState::OutgoingProgress:
@@ -130,6 +139,7 @@ void Client::onSubscriptionStateChanged(linphone::SubscriptionState state) {
 			mSubscribeEvent->unsetData(kEventKey);
 			mSubscribeEvent->terminate();
 			mSubscribeEvent = nullptr;
+			mParticipantDevices.clear();
 			/* TODO: retry later*/
 			break;
 	}

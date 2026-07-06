@@ -38,7 +38,7 @@ void ClientFactory::onSubscriptionStateChanged(const shared_ptr<linphone::Core>&
 		auto& client = linphoneEvent->getData<Client>(Client::kEventKey);
 		client.onSubscriptionStateChanged(state);
 	} catch (const out_of_range&) {
-		LOGI << "Client disconnected";
+		LOGD << "Client disconnected";
 	} catch (const exception& exception) {
 		LOGD << "Caught an unexpected exception on subscription state change:" << exception.what();
 	}
@@ -52,7 +52,7 @@ void ClientFactory::onNotifyReceived(const shared_ptr<Core>&,
 		auto& client = lev->getData<Client>(Client::kEventKey);
 		client.onNotifyReceived(body);
 	} catch (const out_of_range&) {
-		LOGI << "Client disconnected";
+		LOGD << "Client disconnected";
 	} catch (const exception& exception) {
 		LOGD << "Caught an unexpected exception on NOTIFY request receipt:" << exception.what();
 	}
@@ -64,6 +64,7 @@ void ClientFactory::registerClient(Client&) {
 	}
 	mUseCount++;
 }
+
 void ClientFactory::unregisterClient(Client&) {
 	mUseCount--;
 	if (mUseCount == 0) {
@@ -72,10 +73,10 @@ void ClientFactory::unregisterClient(Client&) {
 }
 
 ClientFactory::ClientFactory(const shared_ptr<linphone::Core>& core, const chrono::seconds& subscriptionRefreshDelay)
-    : mCore(core), mSubscriptionRefreshDelay(subscriptionRefreshDelay), mUseCount(0) {}
+    : mCore(core), mSubscriptionRefreshDelay(subscriptionRefreshDelay) {}
 
 shared_ptr<Client> ClientFactory::create(const shared_ptr<const linphone::Address>& to) {
-	return shared_ptr<Client>(new Client{shared_from_this(), to});
+	return make_shared<Client>(shared_from_this(), to);
 }
 
 chrono::seconds ClientFactory::getSubscriptionRefreshDelay() const {

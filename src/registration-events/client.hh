@@ -22,37 +22,41 @@
 
 #include "client-factory.hh"
 #include "client-listener.hh"
+#include "utils/observable.hh"
 
 namespace flexisip::registration_event {
 
 /**
- * Base class for a 'reg' event client.
- * It has to be inherited to get notified of the results of the subscription (the incoming NOTIFY request content).
+ * Base class for a 'reg' event package client (RFC 3680).
+ *
+ * @note Only manages subscription to one AOR at a time. If you need to subscribe to multiple AORs, create multiple
+ * instances of this class.
  */
-class Client {
-public:
-	~Client();
-
-	void subscribe();
-	void unsubscribe();
-	void setListener(ClientListener* listener);
-
-protected:
-	Client(const std::shared_ptr<ClientFactory>& factory, const std::shared_ptr<const linphone::Address>& to);
-
-private:
+class Client : public flexisip::Observable<ClientListener> {
 	friend class ClientFactory;
 
+public:
+	Client(const std::shared_ptr<ClientFactory>& factory, const std::shared_ptr<const linphone::Address>& to);
+	~Client();
+
+	/**
+	 * Subscribe to registration events.
+	 * @note If already subscribed, the listener will be notified of the current state immediately.
+	 */
+	void subscribe(const std::shared_ptr<ClientListener>& listener);
+	void unsubscribe();
+
+private:
 	static constexpr auto* kEventKey{"Regevent::Client"};
 
 	void onNotifyReceived(const std::shared_ptr<const linphone::Content>& body);
 	void onSubscriptionStateChanged(linphone::SubscriptionState state);
 
-	std::shared_ptr<linphone::Event> mSubscribeEvent;
-	std::shared_ptr<ClientFactory> mFactory;
-	std::shared_ptr<linphone::Address> mTo;
-	ClientListener* mListener;
-	std::string mLogPrefix;
+	std::shared_ptr<linphone::Event> mSubscribeEvent{};
+	std::shared_ptr<ClientFactory> mFactory{};
+	std::shared_ptr<linphone::Address> mTo{};
+	std::string mLogPrefix{};
+	std::list<std::shared_ptr<linphone::ParticipantDeviceIdentity>> mParticipantDevices{};
 };
 
 } // namespace flexisip::registration_event

@@ -86,8 +86,8 @@ bool RegistrationSubscription::isContactCompatible(const string& specs) {
  */
 
 OwnRegistrationSubscription::OwnRegistrationSubscription(const ConferenceServer& server,
-                                                         const std::shared_ptr<linphone::ChatRoom>& cr,
-                                                         const std::shared_ptr<const linphone::Address>& participant,
+                                                         const shared_ptr<linphone::ChatRoom>& cr,
+                                                         const shared_ptr<const linphone::Address>& participant,
                                                          RegistrarDb& registrarDb)
     : RegistrationSubscription{server.capabilityCheckEnabled(), cr, participant},
       mLogPrefix{LogManager::makeLogPrefixForInstance(this, "OwnRegistrationSubscription")}, mRegistrarDb{registrarDb} {
@@ -171,18 +171,19 @@ void OwnRegistrationSubscription::onContactRegistered(const shared_ptr<Record>& 
 
 ExternalRegistrationSubscription::ExternalRegistrationSubscription(const ConferenceServer& server,
                                                                    const shared_ptr<ChatRoom>& cr,
-                                                                   const shared_ptr<const Address>& participant)
-    : RegistrationSubscription(server.capabilityCheckEnabled(), cr, participant),
-      Client(server.getRegEventClientFactory(), participant) {
-	setListener(this);
-}
+                                                                   const shared_ptr<const Address>& participant,
+                                                                   const shared_ptr<registration_event::Client>& client)
+    : RegistrationSubscription(server.capabilityCheckEnabled(), cr, participant), mClient(client) {}
 
 void ExternalRegistrationSubscription::start() {
-	subscribe();
+	auto observer = dynamic_pointer_cast<registration_event::ClientListener>(shared_from_this());
+	mClient->addObserver(observer);
+	mClient->subscribe(observer);
 }
 
 void ExternalRegistrationSubscription::stop() {
-	unsubscribe();
+	if (!mClient) return;
+	mClient->removeObserver(dynamic_pointer_cast<registration_event::ClientListener>(shared_from_this()));
 }
 
 void ExternalRegistrationSubscription::onNotifyReceived(
@@ -195,9 +196,9 @@ void ExternalRegistrationSubscription::onNotifyReceived(
 	notify(compatibleParticipantDevices);
 }
 
-void ExternalRegistrationSubscription::onRefreshed(const shared_ptr<ParticipantDeviceIdentity>& deviceIdentity) {
-	if (isContactCompatible(deviceIdentity->getCapabilityDescriptor())) {
-		notifyRegistration(deviceIdentity->getAddress());
+void ExternalRegistrationSubscription::onRefreshed(const shared_ptr<ParticipantDeviceIdentity>& participantDevice) {
+	if (isContactCompatible(participantDevice->getCapabilityDescriptor())) {
+		notifyRegistration(participantDevice->getAddress());
 	}
 }
 

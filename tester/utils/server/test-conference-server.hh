@@ -36,6 +36,8 @@ public:
 	                     const std::shared_ptr<RegistrarDb>& registrarDb);
 	~TestConferenceServer();
 
+	void setOutboundProxy(const std::string& uri);
+
 	void start();
 
 	void clearLocalDomainList();
@@ -43,6 +45,9 @@ public:
 	auto getChatrooms() {
 		return mConfServer->getCore()->getChatRooms();
 	}
+
+	std::shared_ptr<linphone::ChatRoom>
+	findChatroom(const std::shared_ptr<const linphone::Address>& participantAddress) const;
 
 	void bindChatRoom(const std::string& bindingUrl,
 	                  const std::string& contact,

@@ -27,12 +27,12 @@ namespace flexisip::registration_event {
 
 class Client;
 
-/*
- * Helper class to create client 'reg' subscriptions.
- * It must be alive as long as there are Client instantiated, otherwise the clients won't receive any notify anymore.
- * And it must be held by a shared_ptr.
- * Its main purpose is to centralize the linphone::Event callbacks; that are attached to the Core, and dispatch them to
- * the Clients.
+/**
+ * Helper class for creating client 'reg' subscriptions.
+ * It must remain alive while any Client instances exist; otherwise, those clients will no longer receive NOTIFY
+ * requests. It must also be managed by a shared_ptr.
+ * Its main purpose is to centralize the linphone::Event callbacks attached to the Core and dispatch them to the
+ * Clients.
  */
 class ClientFactory : public std::enable_shared_from_this<ClientFactory>, public linphone::CoreListener {
 	friend class Client;

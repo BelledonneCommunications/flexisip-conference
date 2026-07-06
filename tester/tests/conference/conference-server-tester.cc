@@ -19,8 +19,11 @@
 #include "conference/conference-server.hh"
 
 #include <chrono>
+#include <fstream>
 #include <initializer_list>
 #include <memory>
+#include <set>
+#include <string_view>
 #include <vector>
 
 #include "asserts.hh"
@@ -28,9 +31,9 @@
 #include "chat-room-builder.hh"
 #include "client-builder.hh"
 #include "client-core.hh"
-#include "conference/chatroom-prefix.hh"
 #include "core-assert.hh"
 #include "flexisip/registrar/registar-listeners.hh"
+#include "modules/module-forward.hh"
 #include "registrar/binding-parameters.hh"
 #include "registrar/extended-contact.hh"
 #include "registrar/record.hh"
@@ -40,6 +43,7 @@
 #include "server/mysql/mysql-server.hh"
 #include "server/proxy-server.hh"
 #include "server/redis-server.hh"
+#include "server/regevent-server.hh"
 #include "test-patterns/test.hh"
 #include "test-suite.hh"
 #include "utils/server/test-conference-server.hh"
@@ -300,6 +304,316 @@ void inviteResentOnReconnect() {
 	BC_ASSERT_ENUM_EQUAL(offlineDevice->getState(), linphone::ParticipantDevice::State::Present);
 }
 
+class SubscriptionsCounter {
+public:
+	static constexpr string_view mLogPrefix{"SubscriptionsCounter"};
+
+	void countSubscription(const shared_ptr<MsgSip>& msg) {
+		const auto callId = msg->getCallID();
+		const auto* sip = msg->getSip();
+		const auto* to = sip->sip_to ? url_as_string(msg->getHome(), sip->sip_to->a_url) : "<unknown>";
+
+		if (sip->sip_expires && sip->sip_expires->ex_delta == 0) {
+			LOGD << "New unsubscription to " << to << " (" << callId << ")";
+			mUnsubscriptionCallIds[to].emplace(callId);
+		} else {
+			LOGD << "New subscription to " << to << " (" << callId << ")";
+			mSubscriptionCallIds[to].emplace_back(callId);
+		}
+	};
+
+	void countNotify(const shared_ptr<MsgSip>& msg) {
+		const auto* cseq = msg->getSip()->sip_cseq;
+		const auto key = msg->getCallID() + ":" + (cseq ? to_string(cseq->cs_seq) : "<unknown>");
+		mNotifyCallIds.emplace(key);
+
+		LOGD << "New NOTIFY (" << key << "): now has received " << mNotifyCallIds.size() << " NOTIFY requests so far";
+	}
+
+	size_t getCount(const string& to) {
+		const auto it = mSubscriptionCallIds.find(to);
+		if (it == mSubscriptionCallIds.end()) return 0;
+		return it->second.size();
+	};
+
+	size_t getNotifyCount() const {
+		return mNotifyCallIds.size();
+	}
+
+	size_t getUnsubscriptionCount(const string& to) const {
+		const auto it = mUnsubscriptionCallIds.find(to);
+		if (it == mUnsubscriptionCallIds.end()) return 0;
+		return it->second.size();
+	}
+
+	set<string> mNotifyCallIds{};
+	map<string, list<string>> mSubscriptionCallIds{};
+	map<string, set<string>> mUnsubscriptionCallIds{};
+};
+
+/*
+ * Specification:
+ * - Each participant has at most one external registration subscription, regardless of the number of chatrooms
+ *   in which they participate.
+ * - Each participant is subscribed independently of the other participants.
+ * - Registering an additional device for a participant updates every chatroom in which that participant is present.
+ * - After leaving one chatroom, registering an additional device updates only the remaining chatrooms.
+ * - After leaving all chatrooms, registering an additional device updates no chatroom and tears down the external
+ *   registration subscription.
+ * - Rejoining a chatroom restores registration updates for that chatroom.
+ */
+void singleExternalSubscriptionPerParticipant() {
+	SubscriptionsCounter counter{};
+
+	// External proxy and RegEvent server setup.
+	auto hookExternalProxy = InjectedHooks{
+	    .onRequest =
+	        [&counter](unique_ptr<RequestSipEvent>&& ev) {
+		        const auto& msg = ev->getMsgSip();
+		        const auto method = msg->getSipMethod();
+		        if (method == sip_method_subscribe) {
+			        counter.countSubscription(msg);
+		        } else if (method == sip_method_notify) {
+			        const auto* sip = msg->getSip();
+			        if (sip->sip_event && sip->sip_event->o_type && string_view{sip->sip_event->o_type} == "reg") {
+				        counter.countNotify(msg);
+			        }
+		        }
+
+		        return std::move(ev);
+	        },
+	};
+	Server externalProxy{
+	    {
+	        {"global/transports", "sip:127.0.0.2:0;transport=tcp"},
+	        {"global/aliases", "external.example.org"},
+	        {"module::Registrar/enabled", "true"},
+	        {"module::Registrar/reg-domains", "external.example.org"},
+	        {"module::RegEvent/enabled", "true"},
+	    },
+	    &hookExternalProxy,
+	};
+
+	const auto& externalProxyRegistrarDb = externalProxy.getRegistrarDb();
+	RegEventServer externalRegEvent{externalProxyRegistrarDb};
+
+	externalProxy.setConfigParameter({
+	    "module::RegEvent/regevent-server",
+	    "sip:127.0.0.2:" + to_string(externalRegEvent.getCore()->getTransportsUsed()->getTcpPort()) + ";transport=tcp",
+	});
+
+	externalProxy.start();
+
+	// Internal proxy and conference server setup.
+	const string confFocusUri{"sip:conference-focus@local.example.org"};
+	const string confFactoryUri{"sip:conference-factory@local.example.org"};
+	const auto externalProxyUri = "sip:127.0.0.2:"s + externalProxy.getFirstPort() + ";transport=tcp";
+
+	Server proxy{{
+	    {"global/transports", "sip:127.0.0.1:0;transport=tcp"},
+	    {"global/aliases", "local.example.org"},
+	    {"module::Registrar/enabled", "true"},
+	    {"module::Registrar/reg-domains", "local.example.org"},
+	    {"conference-server/database-backend", "sqlite"},
+	    {"conference-server/database-connection-string", "/dev/null"},
+	    {"conference-server/conference-factory-uris", confFactoryUri},
+	    {"conference-server/conference-focus-uris", confFocusUri},
+	    {"conference-server/empty-chat-room-deletion", "false"},
+	    {"conference-server/state-directory", bcTesterWriteDir().append("var/lib/flexisip")},
+	}};
+	proxy.start();
+
+	// This is to route requests (received on the external proxy) intended for the conference-focus to the local proxy.
+	TmpDir directory{__func__};
+	const auto routesConfigFilePath = directory.path() / "routes.conf";
+	{
+		ofstream file{routesConfigFilePath};
+		file << "<sip:127.0.0.1:" << proxy.getFirstPort() << ";transport=tcp> to.uri.user == 'conference-focus'";
+	}
+	externalProxy.setConfigParameter({"module::Forward/routes-config-path", routesConfigFilePath.string()});
+	dynamic_pointer_cast<ForwardModule>(externalProxy.getAgent()->findModuleByRole("Forward"))->reload();
+
+	// Check no one is registered on the external proxy yet.
+	const auto* externalProxyRegistrarBackend =
+	    dynamic_cast<const RegistrarDbInternal*>(&externalProxyRegistrarDb->getRegistrarBackend());
+	BC_HARD_ASSERT_TRUE(externalProxyRegistrarBackend != nullptr);
+	const auto& externalRegistrarDbRecords = externalProxyRegistrarBackend->getAllRecords();
+	BC_HARD_ASSERT_CPP_EQUAL(externalRegistrarDbRecords.size(), 0);
+
+	// Setup local clients.
+	ClientBuilder clientsBuilder{proxy.getAgent()};
+	clientsBuilder.setConferenceFactoryAddress(linphone::Factory::get()->createAddress(confFactoryUri));
+
+	const std::string whaleAddress{"sip:whale@local.example.org"};
+	const auto whale = clientsBuilder.build(whaleAddress);
+
+	// Setup external clients.
+	ClientBuilder externalClientsBuilder{externalProxy.getAgent()};
+	externalClientsBuilder.setConferenceFactoryAddress(linphone::Factory::get()->createAddress(confFactoryUri));
+
+	const std::string sealAddress{"sip:seal@external.example.org"};
+	const auto seal = externalClientsBuilder.build(sealAddress);
+	const std::string wombatAddress{"sip:wombat@external.example.org"};
+	const auto wombat = externalClientsBuilder.build(wombatAddress);
+	const std::string shrimpAddress{"sip:shrimp@external.example.org"};
+	const auto shrimp = externalClientsBuilder.build(shrimpAddress);
+
+	// Check all external clients are registered on the external proxy.
+	BC_HARD_ASSERT_CPP_EQUAL(externalRegistrarDbRecords.size(), 3); // seal, wombat, shrimp
+
+	TestConferenceServer conferenceServer{proxy};
+	conferenceServer.setOutboundProxy(externalProxyUri);
+	conferenceServer.start();
+
+	// Check the local registrar DB has the conference factory and focus URIs bound.
+	const auto& registrarDb = proxy.getRegistrarDb();
+	const auto* registrarDbBackend = dynamic_cast<const RegistrarDbInternal*>(&registrarDb->getRegistrarBackend());
+	BC_HARD_ASSERT_TRUE(registrarDbBackend != nullptr);
+	const auto& records = registrarDbBackend->getAllRecords();
+	BC_HARD_ASSERT_CPP_EQUAL(records.size(), 1 /* users */ + 1 /* factory */ + 1 /* focus */);
+
+	CoreAssert asserter{proxy, externalProxy, externalRegEvent.getCore(), whale, seal, wombat, shrimp};
+
+	const auto mammalsChatroom = whale.chatroomBuilder()
+	                                 .setBackend(linphone::ChatRoom::Backend::FlexisipChat)
+	                                 .setGroup(OnOff::On)
+	                                 .setSubject("Mammals Rocks!")
+	                                 .build({seal.getMe(), wombat.getMe()});
+
+	{
+		const auto listener = make_shared<AllJoinedWaiter>();
+		listener->setChatrooms({mammalsChatroom});
+		asserter
+		    .waitUntil(5s, [&chatRoomsToCreate =
+		                        listener->getChatrooms()] { return LOOP_ASSERTION(chatRoomsToCreate.empty()); })
+		    .assert_passed();
+
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:seal@external.example.org"), 1);
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:wombat@external.example.org"), 1);
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:shrimp@external.example.org"), 0);
+	}
+
+	const auto swimmersChatroom = whale.chatroomBuilder()
+	                                  .setBackend(linphone::ChatRoom::Backend::FlexisipChat)
+	                                  .setGroup(OnOff::On)
+	                                  .setSubject("Can Swim")
+	                                  .build({seal.getMe(), shrimp.getMe()});
+
+	{
+		const auto listener = make_shared<AllJoinedWaiter>();
+		listener->setChatrooms({swimmersChatroom});
+		asserter
+		    .waitUntil(5s, [&chatRoomsToCreate =
+		                        listener->getChatrooms()] { return LOOP_ASSERTION(chatRoomsToCreate.empty()); })
+		    .assert_passed();
+
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:seal@external.example.org"), 1);
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:wombat@external.example.org"), 1);
+		BC_ASSERT_CPP_EQUAL(counter.getCount("sip:shrimp@external.example.org"), 1);
+	}
+
+	const auto confServerChatrooms = conferenceServer.getChatrooms();
+	BC_HARD_ASSERT_CPP_EQUAL(confServerChatrooms.size(), 2);
+
+	const auto mammalsServerChatroom = conferenceServer.findChatroom(wombat.getMe());
+	BC_HARD_ASSERT_NOT_NULL(mammalsServerChatroom);
+	const auto swimmersServerChatroom = conferenceServer.findChatroom(shrimp.getMe());
+	BC_HARD_ASSERT_NOT_NULL(swimmersServerChatroom);
+
+	const auto sealMutableAddress = linphone::Factory::get()->createAddress(sealAddress);
+
+	const auto waitForSealDeviceCount = [&](const shared_ptr<linphone::ChatRoom>& chatroom, size_t count) {
+		asserter
+		    .waitUntil(5s,
+		               [&] {
+			               // Check that the seal participant has the expected number of devices in the chatroom.
+			               return LOOP_ASSERTION(std::ranges::any_of(
+			                   chatroom->getParticipants(), [&sealAddress, count](const auto& participant) {
+				                   return participant->getAddress()->asStringUriOnly() == sealAddress &&
+				                          participant->getDevices().size() == count;
+			                   }));
+		               })
+		    .assert_passed();
+	};
+	const auto hasSeal = [&sealAddress](const shared_ptr<linphone::ChatRoom>& chatroom) {
+		return std::ranges::any_of(chatroom->getParticipants(), [&sealAddress](const auto& participant) {
+			return participant->getAddress()->asStringUriOnly() == sealAddress;
+		});
+	};
+	const auto waitForSealPresence = [&](const shared_ptr<linphone::ChatRoom>& chatroom, bool present) {
+		asserter.waitUntil(5s, [&] { return LOOP_ASSERTION(hasSeal(chatroom) == present); }).assert_passed();
+	};
+
+	const auto notifyCountAfterSetup = counter.getNotifyCount();
+
+	// Case: chatrooms get updated when a new device is registered for a participant already in the chatroom.
+	{
+		const auto newDevice = externalClientsBuilder.build(sealAddress);
+		waitForSealDeviceCount(mammalsServerChatroom, 2);
+		waitForSealDeviceCount(swimmersServerChatroom, 2);
+
+		// Check only one NOTIFY received for the new device, not one per chatroom.
+		BC_ASSERT_CPP_EQUAL(counter.getNotifyCount(), notifyCountAfterSetup + 1);
+	}
+
+	// Case: user leaves one chatroom then change one device, make sure only the other chatroom gets updated, not the
+	// one the user left.
+	{
+		// Seal leaves the mammals chatroom.
+		mammalsChatroom->removeParticipant(mammalsChatroom->findParticipant(sealMutableAddress));
+		waitForSealPresence(mammalsServerChatroom, false);
+
+		// Seal has a new device (which gets destroyed by the end of this scope).
+		const auto notifyCountAfterMammalsLeave = counter.getNotifyCount();
+		const auto newDevice = externalClientsBuilder.build(sealAddress);
+
+		waitForSealDeviceCount(swimmersServerChatroom, 2);
+		BC_ASSERT_CPP_EQUAL(counter.getNotifyCount(), notifyCountAfterMammalsLeave + 1);
+
+		// Check seal is still not present in the mammals chatroom, even though it has a new device.
+		BC_ASSERT_FALSE(hasSeal(mammalsServerChatroom));
+		// Check no unsubscription was received.
+		BC_ASSERT_CPP_EQUAL(counter.getUnsubscriptionCount(sealAddress), 0);
+	}
+
+	// Case: user leaves all chatrooms then change one device, make sure no chatroom gets updated.
+	{
+		const auto unsubscriptionCount = counter.getUnsubscriptionCount(sealAddress);
+
+		// Seal leaves the swimmers chatroom.
+		swimmersChatroom->removeParticipant(swimmersChatroom->findParticipant(sealMutableAddress));
+		waitForSealPresence(swimmersServerChatroom, false);
+
+		BC_ASSERT_FALSE(hasSeal(swimmersServerChatroom));
+		BC_ASSERT_FALSE(hasSeal(mammalsServerChatroom));
+
+		// Wait until the RegistrationEvent::Client gets destroyed (because seal is not in any chatroom anymore).
+		asserter
+		    .waitUntil(
+		        5s,
+		        [&] { return LOOP_ASSERTION(counter.getUnsubscriptionCount(sealAddress) == unsubscriptionCount + 1); })
+		    .assert_passed();
+
+		// Seal has a new device (which gets destroyed by the end of this scope).
+		// This device addition should not trigger any NOTIFY request since seal is not in any chatroom.
+		const auto newDevice = externalClientsBuilder.build(sealAddress);
+	}
+
+	// Case: user rejoins a chatroom then changes one device, make sure the chatroom gets updated.
+	{
+		// Seal rejoins the mammals chatroom.
+		mammalsChatroom->addParticipant(sealMutableAddress);
+		waitForSealPresence(mammalsServerChatroom, true);
+
+		const auto notifyCountAfterReturn = counter.getNotifyCount();
+		// Seal has a new device (which gets destroyed by the end of this scope).
+		const auto newDevice = externalClientsBuilder.build(sealAddress);
+		waitForSealDeviceCount(mammalsServerChatroom, 2);
+
+		BC_ASSERT_CPP_EQUAL(counter.getNotifyCount(), notifyCountAfterReturn + 1);
+	}
+}
+
 /**
  * Test that the conference-server correctly binds the "old" chatroom (chatroom-xyz) even if the uuid has changed.
  */
@@ -379,6 +693,7 @@ TestSuite _{
         CLASSY_TEST(conferenceServerBindsChatroomsFromDBOnInit),
         CLASSY_TEST(conferenceServerClearsOldBindingsOnInit),
         CLASSY_TEST(inviteResentOnReconnect),
+        CLASSY_TEST(singleExternalSubscriptionPerParticipant),
         CLASSY_TEST(oldChatroomSupport),
     },
     Hooks{}

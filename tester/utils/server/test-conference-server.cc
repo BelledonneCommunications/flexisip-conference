@@ -51,12 +51,26 @@ TestConferenceServer::~TestConferenceServer() {
 	mRoot->step(200ms);
 }
 
+void TestConferenceServer::setOutboundProxy(const string& uri) {
+	mConfServer->getServerConf().get<ConfigString>("outbound-proxy")->set(uri);
+}
+
 void TestConferenceServer::start() {
 	mConfServer->init();
 }
 
 void TestConferenceServer::clearLocalDomainList() {
 	const_cast<std::list<std::string>&>(mConfServer->getLocalDomains()).clear();
+}
+
+shared_ptr<linphone::ChatRoom>
+TestConferenceServer::findChatroom(const shared_ptr<const linphone::Address>& participantAddress) const {
+	for (const auto& chatroom : mConfServer->getCore()->getChatRooms()) {
+		for (const auto& participant : chatroom->getParticipants()) {
+			if (participant->getAddress()->equal(participantAddress)) return chatroom;
+		}
+	}
+	return nullptr;
 }
 
 void TestConferenceServer::PatchedConferenceServer::bindAddresses() {

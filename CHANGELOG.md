@@ -19,6 +19,8 @@ Group changes to describe their impact on the project, as follows:
 
 ### [Fixed]
 - Call logs are disabled to avoid memory accumulation
+- Reduced excessive shutdown times when the server uses external registration subscriptions for chatroom participants
+  from external SIP domains. This was caused by an optimization issue.
 
 ## [1.0.1] - 2026-07-30
 - **SDK version:** 5.5.7

@@ -121,20 +121,23 @@ private:
  * Implementation that uses the 'reg' event package to get registration information from external domains with
  * SUBSCRIBE/NOTIFY
  */
-class ExternalRegistrationSubscription : public RegistrationSubscription,
-                                         protected registration_event::ClientListener,
-                                         protected registration_event::Client {
+class ExternalRegistrationSubscription : public RegistrationSubscription, public registration_event::ClientListener {
 public:
 	ExternalRegistrationSubscription(const ConferenceServer& server,
 	                                 const std::shared_ptr<linphone::ChatRoom>& cr,
-	                                 const std::shared_ptr<const linphone::Address>& participant);
+	                                 const std::shared_ptr<const linphone::Address>& participant,
+	                                 const std::shared_ptr<registration_event::Client>& client);
+
 	void start() override;
 	void stop() override;
 
 private:
 	void onNotifyReceived(
 	    const std::list<std::shared_ptr<linphone::ParticipantDeviceIdentity>>& participantDevices) override;
+
 	void onRefreshed(const std::shared_ptr<linphone::ParticipantDeviceIdentity>& participantDevice) override;
+
+	std::shared_ptr<registration_event::Client> mClient{};
 };
 
 } // namespace flexisip

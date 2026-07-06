@@ -67,7 +67,7 @@ public:
 	const std::list<std::string>& getLocalDomains() const {
 		return mLocalDomains;
 	}
-	std::shared_ptr<registration_event::ClientFactory> getRegEventClientFactory() const {
+	virtual std::shared_ptr<registration_event::ClientFactory> getRegEventClientFactory() const {
 		return mRegEventClientFactory;
 	}
 	std::shared_ptr<linphone::Core> getCore() const {

@@ -19,13 +19,32 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <string>
+#include <string_view>
 
 #include "linphone++/linphone.hh"
+
+#include "registration-subscription-factory.hh"
 #include "registration-subscription.hh"
 
 namespace flexisip {
 
 class ConferenceServer; // ConferenceServer is composed by a ParticipantRegistrationSubscriptionHandler
+
+class RegistrationSubscriptionStore {
+public:
+	void addSubscription(const std::shared_ptr<const linphone::Address>& address,
+	                     const std::shared_ptr<RegistrationSubscription>& subscription);
+	bool findSubscription(const std::shared_ptr<linphone::ChatRoom>& chatRoom,
+	                      const std::shared_ptr<const linphone::Address>& address);
+	void removeSubscription(const std::shared_ptr<linphone::ChatRoom>& chatRoom,
+	                        const std::shared_ptr<const linphone::Address>& address);
+	void removeAllSubscriptions();
+
+protected:
+	std::multimap<std::string, std::shared_ptr<RegistrationSubscription>> mSubscriptions;
+};
 
 class ParticipantRegistrationSubscriptionHandler
     : public std::enable_shared_from_this<ParticipantRegistrationSubscriptionHandler> {
@@ -41,10 +60,15 @@ public:
 private:
 	static constexpr std::string_view mLogPrefix{"ParticipantRegistrationSubscriptionHandler"};
 
+	void startSubscription(const std::shared_ptr<RegistrationSubscriptionFactory>& factory,
+	                       const std::shared_ptr<linphone::ChatRoom>& chatRoom,
+	                       const std::shared_ptr<const linphone::Address>& address);
+
 	const ConferenceServer& mServer;
 	RegistrarDb& mRegistrarDb; // keep only a ref as registrarDb is owned by ConferenceServer
-	std::string getKey(const std::shared_ptr<const linphone::Address>& address);
-	std::multimap<std::string, std::shared_ptr<RegistrationSubscription>> mSubscriptions;
+	std::shared_ptr<RegistrationSubscriptionFactory> mOwnFactory{};
+	std::shared_ptr<RegistrationSubscriptionFactory> mExternalFactory{};
+	RegistrationSubscriptionStore mSubscriptionStore{};
 };
 
 } // namespace flexisip

@@ -23,8 +23,11 @@
 add_executable(flexisip_conference_tester
 	conference/codecs-tester.cc
 	conference/conference-server-tester.cc
+	conference/registration-subscription-factory-tester.cc
+	conference/registration-subscription-store-tester.cc
 	conference/registration-subscription-tester.cc
 	main-tester.cc
+	registration-event-client-tester.cc
 
 	${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.cc ${PROJECT_SOURCE_DIR}/flexisip/tester/tests/tester.hh
 )

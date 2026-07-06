@@ -25,9 +25,8 @@ namespace flexisip::registration_event {
 class ClientListener {
 public:
 	/**
-	 * This is where the parsing result of the incoming NOTIFY are notified.
-	 * The ParticipantDeviceIdentity object is convenient to represent the device information returned by the reg event
-	 * package.
+	 * The parsing results of incoming NOTIFY requests are reported here.
+	 * ParticipantDeviceIdentity conveniently represents the device information returned by the reg event package.
 	 */
 	virtual void
 	onNotifyReceived(const std::list<std::shared_ptr<linphone::ParticipantDeviceIdentity>>& participantDevices) = 0;
