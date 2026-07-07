@@ -23,7 +23,7 @@ Group changes to describe their impact on the project, as follows:
 ## [1.0.1] - Hotfix
 - **SDK version:** 5.5.7
 
-## [1.0.0] - Beta
+## [1.0.0] - 2026-07-07
 The following changes are made in comparison to the conference server released in Flexisip 2.5.1.
 - **SDK version:** 5.5-beta
 
@@ -51,7 +51,6 @@ The following changes are made in comparison to the conference server released i
     - Option `--disable-stdout` in command line to not display the log in standard output.
     - Option `--remove-deprecated` in command line. When dumping the configuration, all deprecated parameters will be 
     removed even if they have a value explicitly set.
-
 
 ### [Changed]
 - **Service:** The Flexisip services are now managed and started directly by SystemD. Service behavior is configured in
