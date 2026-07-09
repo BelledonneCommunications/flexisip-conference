@@ -4,7 +4,7 @@ The following requirements must be met before merging:
 <table>
 <tbody>
 <tr>
-<td rowspan="3">flexisip</td>
+<td rowspan="3">flexisip-conference</td>
 <td>
 
 - [ ] done
@@ -43,6 +43,24 @@ The following requirements must be met before merging:
 </td>
 <td>SHA1 consistency of cherry-picked commits</td>
 </tr>
+
+<tr>
+<td rowspan="1">flexisip</td>
+<td>
+
+- [ ] done
+
+</td>
+<td>
+
+- [ ] N.A.
+
+</td>
+<td>
+<p> On corresponding release branch or master</p>
+<p>(SHA1 on a dev branch is forbidden)</p></td>
+</tr>
+
 <tr>
 <td rowspan="2">linphone-sdk</td>
 <td>
