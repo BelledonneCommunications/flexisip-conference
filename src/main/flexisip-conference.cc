@@ -21,7 +21,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
-#include <functional>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -76,13 +75,8 @@
 #include "exceptions/bad-configuration.hh"
 #include "exceptions/exit.hh"
 #include "registrar/registrar-db.hh"
-#include "stun.hh"
 
 #include "conference/conference-server.hh"
-
-#if ENABLE_FLEXIAPI
-#include "flexiapi/config.hh"
-#endif
 
 #ifdef ENABLE_SNMP
 #include "snmp/snmp-agent.hh"
@@ -91,9 +85,7 @@
 #include "flexisip-conference.hh"
 
 #include "flexisip/configmanager.hh"
-#include "utils/pipe.hh"
 #include "utils/process-monitoring/memory-watcher.hh"
-#include "utils/transport/http/http2client.hh"
 
 using namespace std;
 using namespace flexisip_conference;
@@ -666,7 +658,7 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	// Create an Agent in all cases because it will declare configuration items that are necessary.
 	const auto authDb = std::make_shared<AuthDb>(cfg);
 	const auto registrarDb = std::make_shared<RegistrarDb>(root, cfg);
-	auto agent = make_shared<Agent>(root, cfg, authDb, registrarDb);
+	auto agent = make_shared<Agent>(root, cfg, authDb, registrarDb, nullptr);
 	setOpenSSLThreadSafe();
 
 #ifdef ENABLE_SNMP

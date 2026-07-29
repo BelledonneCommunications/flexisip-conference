@@ -33,6 +33,11 @@ add_library(flexisip-conference
 	conference/participant-registration-subscription-handler.hh
 	main/flexisip-conference.hh
 	main/flexisip-conference.cc
+	registration-events/client.cc
+	registration-events/client.hh
+	registration-events/client-factory.cc
+	registration-events/client-factory.hh
+	registration-events/client-listener.hh
 )
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

@@ -22,8 +22,10 @@
 #include <memory>
 
 #include "linphone++/linphone.hh"
+
 #include "participant-registration-subscription-handler.hh"
 #include "registrar/registrar-db.hh"
+#include "registration-events/client-factory.hh"
 #include "registration-subscription.hh"
 #include "service-server/service-server.hh"
 
@@ -65,7 +67,7 @@ public:
 	const std::list<std::string>& getLocalDomains() const {
 		return mLocalDomains;
 	}
-	std::shared_ptr<RegistrationEvent::ClientFactory> getRegEventClientFactory() const {
+	std::shared_ptr<registration_event::ClientFactory> getRegEventClientFactory() const {
 		return mRegEventClientFactory;
 	}
 	std::shared_ptr<linphone::Core> getCore() const {
@@ -123,7 +125,7 @@ private:
 	void writeUuid(const std::string& uuid);
 	std::string getUuid();
 	std::shared_ptr<linphone::Core> mCore{};
-	std::shared_ptr<RegistrationEvent::ClientFactory> mRegEventClientFactory{};
+	std::shared_ptr<registration_event::ClientFactory> mRegEventClientFactory{};
 	SipUri mPath{};
 	std::shared_ptr<ConfigManager> mConfigManager;
 	std::shared_ptr<RegistrarDb> mRegistrarDb;

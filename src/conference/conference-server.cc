@@ -18,17 +18,18 @@
 
 #include "conference-server.hh"
 
+#include <sys/stat.h>
+
 #include <chrono>
 #include <fstream>
 
-#include "belle-sip/utils.h"
 #include "exceptions/bad-configuration.hh"
 #include "flexisip-conference/flexisip-conference-version.h"
 #include "flexisip/configmanager.hh"
 #include "registrar/binding-parameters.hh"
 #include "registrar/extended-contact.hh"
 #include "registrar/record.hh"
-#include "registration-events/client.hh"
+#include "registration-events/client-factory.hh"
 #include "sofia-sip/sip_header.h"
 #include "utils/configuration/media.hh"
 #include "utils/configuration/transport.hh"
@@ -236,7 +237,7 @@ void ConferenceServer::_init() {
 	mLocalDomains.unique();
 
 	auto refreshDelay = config->get<ConfigDuration<seconds>>("subscription-refresh-delay")->readAndCast();
-	mRegEventClientFactory = make_shared<RegistrationEvent::ClientFactory>(mCore, refreshDelay);
+	mRegEventClientFactory = make_shared<registration_event::ClientFactory>(mCore, refreshDelay);
 
 	mCore->enableEmptyChatroomsDeletion(config->get<ConfigBoolean>("empty-chat-room-deletion")->read());
 	if (config->get<ConfigBoolean>("cleanup-expired-conferences")->read())
@@ -750,7 +751,7 @@ filesystem::path ConferenceServer::getStateDir(const string& subdir) const {
 }
 
 void ConferenceServer::ensureDirectoryCreated(const filesystem::path& directory) {
-	struct stat st;
+	struct stat st{};
 	if (stat(directory.c_str(), &st) != 0 && errno == ENOENT) {
 		LOGD << "Creating Flexisip state directory: " << directory;
 		string command("mkdir -p");

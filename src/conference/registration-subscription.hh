@@ -18,10 +18,12 @@
 
 #pragma once
 
+#include "linphone++/linphone.hh"
+
 #include "flexisip/registrar/registar-listeners.hh"
 #include "flexisip/utils/sip-uri.hh"
-#include "linphone++/linphone.hh"
 #include "registrar/registrar-db.hh"
+#include "registration-events/client-listener.hh"
 #include "registration-events/client.hh"
 
 namespace flexisip {
@@ -120,8 +122,8 @@ private:
  * SUBSCRIBE/NOTIFY
  */
 class ExternalRegistrationSubscription : public RegistrationSubscription,
-                                         protected RegistrationEvent::ClientListener,
-                                         protected RegistrationEvent::Client {
+                                         protected registration_event::ClientListener,
+                                         protected registration_event::Client {
 public:
 	ExternalRegistrationSubscription(const ConferenceServer& server,
 	                                 const std::shared_ptr<linphone::ChatRoom>& cr,
