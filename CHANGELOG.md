@@ -20,7 +20,7 @@ Group changes to describe their impact on the project, as follows:
 ### [Fixed]
 - Call logs are disabled to avoid memory accumulation
 
-## [1.0.1] - Hotfix
+## [1.0.1] - 2026-07-30
 - **SDK version:** 5.5.7
 
 ## [1.0.0] - 2026-07-07
