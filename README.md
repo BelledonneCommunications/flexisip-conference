@@ -5,6 +5,10 @@ For other services, see [Flexisip](https://giblab.linphone.org/BC/public/flexisi
 
 The conference server enables group voice and video calls as well as instant messaging in group chats.
 
+> The **Conference Server** feature was previously part of the main Flexisip project and was separated in Flexisip 2.6.
+> A [migration guide](https://wiki.linphone.org/xwiki/wiki/public/view/Flexisip/HOWTOs/Flexisip%202.5%20to%202.6%20migration%20guide/)
+> is available in our wiki to facilitate the transition from Flexisip 2.5 and older to Flexisip-conference.
+
 ## Deployment and Applications:
 
 * **Server-based VoIP Service**: Flexisip can be deployed on server machines to run a full-fledged SIP VoIP service.
