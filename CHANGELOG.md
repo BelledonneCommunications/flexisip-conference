@@ -27,6 +27,9 @@ Group changes to describe their impact on the project, as follows:
 
 ## [1.0.0] - 2026-07-07
 The following changes are made in comparison to the conference server released in Flexisip 2.5.1.
+
+A [migration guide](https://wiki.linphone.org/xwiki/wiki/public/view/Flexisip/HOWTOs/Flexisip%202.5%20to%202.6%20migration%20guide/)
+is available in our wiki to facilitate the transition from **Flexisip 2.5** and older to **Flexisip-conference 1.0**.
 - **SDK version:** 5.5-beta
 
 ### [Added]
