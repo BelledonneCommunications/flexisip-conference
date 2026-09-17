@@ -101,6 +101,8 @@ private:
 	                                 const ConfigValue* config);
 	static void ensureDirectoryCreated(const std::filesystem::path& directory);
 
+	static linphone::ChatRoom::HandlingSet getChatRoomsHandlingSet(const ConfigString* config);
+
 	void loadFactoryUris();
 	// RegistrarDbStateListener implementation
 	void onRegistrarDbWritable(bool writable) override;
@@ -119,6 +121,7 @@ private:
 	void onParticipantRegistrationUnsubscriptionRequested(
 	    const std::shared_ptr<linphone::ChatRoom>& cr,
 	    const std::shared_ptr<const linphone::Address>& participantAddr) override;
+
 	std::filesystem::path getUuidFilePath() const;
 	std::filesystem::path getStateDir(const std::string& subdir = "") const;
 	const std::string& readUuid();

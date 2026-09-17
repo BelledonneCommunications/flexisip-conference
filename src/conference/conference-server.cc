@@ -250,6 +250,15 @@ void ConferenceServer::_init() {
 	mCore->setConferenceExpirePeriod(
 	    config->get<ConfigDuration<seconds>>("conferences-expiry-time")->readAndCast().count());
 
+	mCore->setMaxParticipantsPerChatroom(config->get<ConfigInt>("max-participants-per-chatroom")->read());
+
+	mCore->enableChatRoomAddressUnification(config->get<ConfigBoolean>("chatroom-address-unification")->read());
+
+	mCore->enableUpdateDbAtStartup(config->get<ConfigBoolean>("database-migration-on-startup")->read());
+
+	const auto handledChatroomCategory = config->get<ConfigString>("handled-chatroom-category");
+	mCore->setChatRoomsHandlingSet(getChatRoomsHandlingSet(handledChatroomCategory));
+
 	Status err = mCore->start();
 	if (err == -2) throw ExitFailure{"the Linphone core could not start because the connection to the database failed"};
 	if (err < 0) throw ExitFailure{"the Linphone core failed to start (please check the logs)"};
@@ -279,6 +288,15 @@ void ConferenceServer::enableSelectedCodecs(const list<shared_ptr<linphone::Payl
 	if (!mimeTypes.empty()) {
 		throw BadConfigurationValue{config, "unsupported codecs in the list: " + StringUtils::join(mimeTypes)};
 	}
+}
+
+ChatRoom::HandlingSet ConferenceServer::getChatRoomsHandlingSet(const ConfigString* config) {
+	const auto& value = config->read();
+	if (value == "all") return ChatRoom::HandlingSet::All;
+	if (value == "legacy") return ChatRoom::HandlingSet::LegacyOnly;
+	if (value == "focus") return ChatRoom::HandlingSet::AssociatedToFocusOnly;
+	if (value == "legacy-and-focus") return ChatRoom::HandlingSet::LegacyAndAssociatedToFocus;
+	throw BadConfigurationValue{config, "unsupported value"};
 }
 
 void ConferenceServer::_run() {
@@ -716,6 +734,43 @@ auto& defineConfig = ConfigManager::defaultInit().emplace_back([](GenericStruct&
 	        "The end of a conference, here, is the latest time between the scheduled end time, and the time when the "
 	        "last participant has left.",
 	        "30d",
+	    },
+	    {
+	        Integer,
+	        "max-participants-per-chatroom",
+	        "Sets the maximum number of participants a chatroom can support on this server.\n"
+	        "0 means that there is no upper limit.",
+	        "50",
+	    },
+	    {
+	        Boolean,
+	        "chatroom-address-unification",
+	        "If enabled, the chatroom address unification process will be done at startup.\n"
+	        "This process will make all chatrooms addressable with an address following the pattern "
+	        "'<conference-focus>;conf-id=<random_string>'.\n"
+	        "Chatrooms are still addressable using the old address, though. Nevertheless a preference is given to the "
+	        "unified address to benefit of better routing.\n"
+	        "No migration is performed for chatrooms whose address is already following the migration pattern.",
+	        "false",
+	    },
+	    {
+	        Boolean,
+	        "database-migration-on-startup",
+	        "If enabled, the server will migrate the database to the latest version on startup.\n"
+	        "If not, the database scheme will not be created and you are responsible to ensure that it has been "
+	        "created beforehand.",
+	        "true",
+	    },
+	    {
+	        String,
+	        "handled-chatroom-category",
+	        "Sets the category of chatrooms that will be handled by this server.\n"
+	        "Possible values:\n"
+	        "'all' -> Handle all chatrooms.\n"
+	        "'legacy' -> Handle only legacy chatrooms.\n"
+	        "'focus' -> Handle only chatrooms whose address matches 'conference-focus-uris'.\n"
+	        "'legacy-and-focus' -> Handle 'legacy' and 'focus' chatrooms.",
+	        "all",
 	    },
 
 	    // Deprecated parameters

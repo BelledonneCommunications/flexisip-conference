@@ -17,6 +17,12 @@ Group changes to describe their impact on the project, as follows:
 ## [1.1.0] - Alpha
 - **SDK version:** 5.6-alpha
 
+### [Added]
+- Add parameter `max-participants-per-chatroom` to limit the number of participants per chatroom.
+- Add parameter `chatroom-address-unification` to enable the chatroom address unification process at startup.
+- Add parameter `database-migration-on-startup` to enable the database migration process at startup.
+- Add parameter `handled-chatroom-category` to specify which type of chatroom the server will handle.
+
 ### [Fixed]
 - Call logs are disabled to avoid memory accumulation
 - Reduced excessive shutdown times when the server uses external registration subscriptions for chatroom participants
