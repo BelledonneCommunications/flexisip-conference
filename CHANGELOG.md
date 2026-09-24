@@ -29,7 +29,12 @@ Group changes to describe their impact on the project, as follows:
   from external SIP domains. This was caused by an optimization issue.
 
 ## [1.0.2] - Hotfix
-- **SDK version:** 5.5.16
+- **SDK version:** 5.5.23
+
+### [Fixed]
+- **Conference server:**
+    - The conference subject can only be changed by a participant with the administrator role.
+    - A call no longer enters the 'PausedByRemote' state when the participant is leaving the conference.
 
 ## [1.0.1] - 2026-07-30
 - **SDK version:** 5.5.7
