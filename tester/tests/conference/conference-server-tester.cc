@@ -292,7 +292,7 @@ void inviteResentOnReconnect() {
 	const auto devices = julienParticipant->getDevices();
 	BC_HARD_ASSERT_CPP_EQUAL(devices.size(), 1);
 	const auto& offlineDevice = devices.front();
-	BC_ASSERT_ENUM_EQUAL(offlineDevice->getState(), linphone::ParticipantDevice::State::ScheduledForJoining);
+	BC_ASSERT_ENUM_EQUAL(offlineDevice->getState(), linphone::ParticipantDevice::State::Joining);
 
 	SLOGD << "TEST " << __FUNCTION__ << " Client reconnects";
 	julien.reconnect();
