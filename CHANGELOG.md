@@ -28,7 +28,7 @@ Group changes to describe their impact on the project, as follows:
 - Reduced excessive shutdown times when the server uses external registration subscriptions for chatroom participants
   from external SIP domains. This was caused by an optimization issue.
 
-## [1.0.2] - Hotfix
+## [1.0.2] - 2026-10-29
 - **SDK version:** 5.5.23
 
 ### [Fixed]
