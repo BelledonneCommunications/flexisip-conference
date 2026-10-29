@@ -14,7 +14,7 @@ Group changes to describe their impact on the project, as follows:
 | Security       | To invite users to upgrade in case of vulnerabilities                       |
 | Known Issues   | Issues whose fix has not been tested and cannot be included in this release |
 
-## [1.0.2] - Hotfix
+## [1.0.2] - 2026-10-29
 - **SDK version:** 5.5.23
 
 ### [Fixed]
