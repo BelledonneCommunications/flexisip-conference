@@ -18,7 +18,6 @@
 
 #include "eventlogs/writers/flexi-stats-event-log-writer.hh"
 
-#include <atomic>
 #include <memory>
 #include <regex>
 #include <unordered_map>
@@ -31,6 +30,7 @@
 #include "client-builder.hh"
 #include "core-assert.hh"
 #include "eventlogs/event-logs.hh"
+#include "flexiapi-builder.hh"
 #include "flexiapi/schemas/iso-8601-date.hh"
 #include "http-mock/http-mock.hh"
 #include "server/mysql/mysql-server.hh"
@@ -46,23 +46,22 @@ using namespace flexisip::tester::http_mock;
 
 optional<MysqlServer> sDbServer{nullopt};
 
-RestClient getRestClient(sofiasip::SuRoot& root, const string& host, int port, const string& apiKey) {
-	const auto http2Client = Http2Client::make(root, host, to_string(port));
-	return RestClient{http2Client, HttpHeaders{
-	                                   {"accept", "application/json"},
-	                                   {"x-api-key"s, apiKey},
-	                               }};
-}
-
 void callToConference() {
-	const auto proxy = makeAndStartProxy();
-	const auto& agent = proxy->getAgent();
-	std::atomic_int eventLogRequestsReceivedCount{0};
-	HttpMock flexiapiServer{{"/"}, &eventLogRequestsReceivedCount};
-	int port = flexiapiServer.serveAsync();
+	FlexiapiBuilder apiBuilder{};
+	auto flexiapiServer = apiBuilder.addEndpoint("/").build();
+	int port = flexiapiServer->getFirstPort();
 	BC_HARD_ASSERT_TRUE(port > -1);
-	agent->setEventLogWriter(std::make_unique<FlexiStatsEventLogWriter>(
-	    getRestClient(*agent->getRoot(), "127.0.0.1", port, "aRandomApiToken"), ""));
+	const auto proxy = makeAndStartProxy({
+	    {"global::flexiapi/url", "https://127.0.0.1:"s + to_string(port)},
+	    {"global::flexiapi/api-key", "aRandomApiToken"},
+	});
+	const auto& agent = proxy->getAgent();
+
+	// Pop the first request to /api/spaces and reset the counter.
+	std::ignore = flexiapiServer->popRequestReceived();
+	flexiapiServer->resetRequestReceivedCount();
+
+	agent->setEventLogWriter(std::make_unique<FlexiStatsEventLogWriter>(agent->getSpacesStore()));
 	const ClientBuilder builder{proxy->getAgent()};
 	const auto johan = builder.build("sip:johan@sip.example.org");
 	const string expectedConferenceId = "expected-conf-id";
@@ -72,9 +71,12 @@ void callToConference() {
 
 	johan.invite(chatroom);
 	BC_HARD_ASSERT_TRUE(
-	    asserter.iterateUpTo(4, [&eventLogRequestsReceivedCount] { return 0 < eventLogRequestsReceivedCount; }, 1s));
+	    asserter.iterateUpTo(4, [&flexiapiServer] { return 0 < flexiapiServer->getRequestReceivedCount(); }, 1s));
 
-	const auto startedEvent = flexiapiServer.popRequestReceived();
+	const auto startedEvent = flexiapiServer->popRequestReceived();
+	BC_HARD_ASSERT(startedEvent != nullptr);
+	BC_ASSERT_CPP_EQUAL(startedEvent->method, "POST");
+	BC_ASSERT_CPP_EQUAL(startedEvent->path, "/api/statistics/calls");
 	json actualJson;
 	try {
 		actualJson = json::parse(startedEvent->body);
@@ -85,6 +87,11 @@ void callToConference() {
 }
 
 void messageToChatroomClearText() {
+	FlexiapiBuilder apiBuilder{};
+	auto flexiapiServer = apiBuilder.addEndpoint("/").build();
+	int port = flexiapiServer->getFirstPort();
+	BC_HARD_ASSERT_TRUE(port > -1);
+
 	const string confFactoryUri = "sip:conference-factory@sip.example.org";
 	const string confFocusUri = "sip:conference-focus@sip.example.org";
 	const auto proxy = makeAndStartProxy({
@@ -94,8 +101,17 @@ void messageToChatroomClearText() {
 	    {"conference-server/database-backend", "mysql"},
 	    {"conference-server/database-connection-string", sDbServer->connectionString()},
 	    {"conference-server/state-directory", bcTesterWriteDir().append("var/lib/flexisip")},
+	    {"global::flexiapi/url", "https://127.0.0.1:"s + to_string(port)},
+	    {"global::flexiapi/api-key", "toktok"},
 	});
 	const auto& agent = proxy->getAgent();
+
+	// Pop the first request to /api/spaces and reset the counter.
+	std::ignore = flexiapiServer->popRequestReceived();
+	flexiapiServer->resetRequestReceivedCount();
+
+	agent->setEventLogWriter(std::make_unique<FlexiStatsEventLogWriter>(agent->getSpacesStore()));
+
 	ClientBuilder builder{agent};
 	builder.setConferenceFactoryAddress(linphone::Factory::get()->createAddress(confFactoryUri));
 	builder.setLimeX3DH(OnOff::Off);
@@ -112,11 +128,6 @@ void messageToChatroomClearText() {
 	                          .setSubject("GYM")
 	                          .build({pauline.getMe(), tony.getMe(), mike.getMe()});
 	BC_HARD_ASSERT_TRUE(clemChat != nullptr);
-	std::atomic_int eventLogRequestsReceivedCount{0};
-	HttpMock flexiapiServer{{"/"}, &eventLogRequestsReceivedCount};
-	int port = flexiapiServer.serveAsync();
-	agent->setEventLogWriter(
-	    std::make_unique<FlexiStatsEventLogWriter>(getRestClient(*agent->getRoot(), "127.0.0.1", port, "toktok"), "/"));
 	TestConferenceServer confServer(*proxy);
 	confServer.start();
 	const auto before = chrono::system_clock::now();
@@ -124,16 +135,16 @@ void messageToChatroomClearText() {
 	clemChat->createMessageFromUtf8("💃🏼")->send();
 	asserter
 	    .iterateUpTo(0x10,
-	                 [&eventLogRequestsReceivedCount]() {
-		                 FAIL_IF(eventLogRequestsReceivedCount < 1 /* sent */ + recipientCount);
+	                 [&flexiapiServer]() {
+		                 FAIL_IF(flexiapiServer->getRequestReceivedCount() < 1 /* sent */ + recipientCount);
 		                 return ASSERTION_PASSED();
 	                 })
 	    .assert_passed();
 
-	const auto sentEvent = flexiapiServer.popRequestReceived();
+	const auto sentEvent = flexiapiServer->popRequestReceived();
 	BC_HARD_ASSERT(sentEvent != nullptr);
 	BC_ASSERT_CPP_EQUAL(sentEvent->method, "POST");
-	BC_ASSERT_CPP_EQUAL(sentEvent->path, "/messages");
+	BC_ASSERT_CPP_EQUAL(sentEvent->path, "/api/statistics/messages");
 	json actualJson;
 	try {
 		actualJson = json::parse(sentEvent->body);
@@ -153,9 +164,9 @@ void messageToChatroomClearText() {
 	BC_ASSERT_CPP_EQUAL(actualJson, expectedJson);
 	BC_ASSERT_TRUE(before <= sentAt);
 	unordered_map<string, shared_ptr<Request>> deliveredEvents{};
-	const regex extractEventIdAndDeviceFromPath{R"regex(/messages/(.+)/to/(.+)/devices/.+)regex"};
+	const regex extractEventIdAndDeviceFromPath{R"regex(/api/statistics/messages/(.+)/to/(.+)/devices/.+)regex"};
 	for (auto _ = 0; _ < recipientCount; ++_) {
-		auto event = flexiapiServer.popRequestReceived();
+		auto event = flexiapiServer->popRequestReceived();
 		BC_ASSERT(event != nullptr);
 		std::smatch match{};
 		BC_ASSERT_TRUE(std::regex_match(event->path, match, extractEventIdAndDeviceFromPath));
