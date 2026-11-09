@@ -438,6 +438,9 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	TCLAP::SwitchArg           trackAllocs("",  "track-allocations",   "Track allocations of SIP messages (use with "
                                                                        "caution).",
                                                                        cmd);
+	TCLAP::SwitchArg         checkDatabase("",  "check-database",     "Check if the database needs to be upgraded.",
+		                                                               cmd);
+	TCLAP::SwitchArg       upgradeDatabase("",  "upgrade-database",   "Upgrade the database schema if necessary.", cmd);
 	// clang-format on
 
 	// Instantiate the LogManager.
@@ -454,7 +457,7 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	logger.configure({
 	    .enableStandardOutput = !(disableStdout || rewriteConf),
 	    .level = useDebug ? BCTBX_LOG_DEBUG : BCTBX_LOG_WARNING,
-	    .enableSyslog = disableStdout,
+	    .enableSyslog = useSyslog,
 	    .syslogLevel = BCTBX_LOG_ERROR,
 	    .enableUserErrors = useDebug,
 	});
@@ -480,12 +483,7 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 
 	// Deprecate modules and sections from Flexisip that are not needed by the conference server
 	const vector<string> sectionsToDeprecate{
-	    "event-logs",
-	    "mdns-register",
-	    "regevent-server",
-	    "stun-server",
-	    "global::flexiapi",
-	    "inter-domain-connections",
+	    "event-logs", "mdns-register", "regevent-server", "stun-server", "global::flexiapi", "inter-domain-connections",
 	};
 	const vector<string> modulesToKeep{"module::Registrar"};
 
@@ -672,6 +670,40 @@ int flexisip_conference::main(int argc, const char* argv[]) {
 	}
 #endif
 	auto conferenceServer = make_shared<ConferenceServer>(agent->getPreferredRoute(), root, cfg, registrarDb);
+
+	if (checkDatabase || upgradeDatabase) {
+		switch (conferenceServer->getDatabaseUpgradeStatus()) {
+			case ConferenceServer::DatabaseUpgradeStatus::UpgradeNeeded:
+				if (upgradeDatabase) {
+					switch (conferenceServer->upgradeDatabase()) {
+						case 0:
+							logger.message(kLogPrefix, __func__,
+							               "Flexisip-conference: database has been successfully updated.");
+							return EXIT_SUCCESS;
+						case -1:
+							logger.message(kLogPrefix, __func__, "Flexisip-conference: unable to open the database.");
+							return EXIT_FAILURE;
+						default:
+							logger.message(kLogPrefix, __func__, "Flexisip-conference: database could not be updated.");
+							return EXIT_FAILURE;
+					}
+				}
+
+				logger.message(
+				    kLogPrefix, __func__,
+				    "Flexisip-conference: database upgrade is needed, please use '--upgrade-database' to upgrade.");
+				break;
+			case ConferenceServer::DatabaseUpgradeStatus::UpToDate:
+				logger.message(kLogPrefix, __func__, "Flexisip-conference: database is up to date.");
+				break;
+			case ConferenceServer::DatabaseUpgradeStatus::NoDatabase:
+				logger.message(kLogPrefix, __func__, "Flexisip-conference: no database is used by this server.");
+				break;
+		}
+
+		return EXIT_SUCCESS;
+	}
+
 	conferenceServer->init();
 
 #ifdef ENABLE_SYSTEMD

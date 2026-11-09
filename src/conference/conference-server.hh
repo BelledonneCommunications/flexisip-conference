@@ -41,6 +41,12 @@ class ConferenceServer : public ServiceServer,
                          public linphone::CoreListener,
                          public linphone::ChatRoomListener {
 public:
+	enum class DatabaseUpgradeStatus {
+		UpgradeNeeded,
+		UpToDate,
+		NoDatabase,
+	};
+
 	template <typename StrT, typename SuRootPtr>
 	ConferenceServer(StrT&& pathUri,
 	                 SuRootPtr&& root,
@@ -86,6 +92,9 @@ public:
 		return *mConfigManager->getRoot()->get<GenericStruct>("conference-server");
 	}
 
+	DatabaseUpgradeStatus getDatabaseUpgradeStatus();
+	int upgradeDatabase();
+
 protected:
 	void _init() override;
 	void _run() override;
@@ -104,6 +113,7 @@ private:
 	static linphone::ChatRoom::HandlingSet getChatRoomsHandlingSet(const ConfigString* config);
 
 	void loadFactoryUris();
+	std::shared_ptr<linphone::Core> createCore();
 	// RegistrarDbStateListener implementation
 	void onRegistrarDbWritable(bool writable) override;
 

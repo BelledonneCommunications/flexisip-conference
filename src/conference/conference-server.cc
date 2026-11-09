@@ -44,7 +44,7 @@ namespace flexisip {
 
 sofiasip::Home ConferenceServer::mHome;
 
-void ConferenceServer::_init() {
+std::shared_ptr<linphone::Core> ConferenceServer::createCore() {
 	const auto* config = mConfigManager->getRoot()->get<GenericStruct>("conference-server");
 
 	// Transport configuration.
@@ -121,47 +121,44 @@ void ConferenceServer::_init() {
 	// Prevent the default log handler from being reset while LinphoneCore construction.
 	configLinphone->setBool("logging", "disable_stdout", true);
 
-	mCore = Factory::get()->createCoreWithConfig(configLinphone, nullptr);
+	auto core = Factory::get()->createCoreWithConfig(configLinphone, nullptr);
 
-	mCore->setInCallTimeout(config->get<ConfigDuration<chrono::seconds>>("call-timeout")->readAndCast().count());
-	mCore->enableRtpBundle(true);
-	mCore->enableEchoCancellation(false);
-	if (!mMediaConfig.textEnabled) mCore->enableDatabase(false);
+	core->setInCallTimeout(config->get<ConfigDuration<chrono::seconds>>("call-timeout")->readAndCast().count());
+	core->enableRtpBundle(true);
+	core->enableEchoCancellation(false);
+	if (!mMediaConfig.textEnabled) core->enableDatabase(false);
 
 	const auto* noRTPTimeoutParameter = config->get<ConfigDuration<chrono::seconds>>("no-rtp-timeout");
 	const auto noRTPTimeout = noRTPTimeoutParameter->read();
 	if (noRTPTimeout <= 0ms) throw BadConfigurationValue{noRTPTimeoutParameter, "duration must be strictly positive"};
 
-	mCore->setNortpTimeout(static_cast<int>(chrono::duration_cast<chrono::seconds>(noRTPTimeout).count()));
+	core->setNortpTimeout(static_cast<int>(chrono::duration_cast<chrono::seconds>(noRTPTimeout).count()));
 
-	mCore->setUserAgent("Flexisip-conference", FLEXISIP_CONFERENCE_GIT_VERSION);
-	mCore->addListener(shared_from_this());
-	mCore->enableConferenceServer(true);
-	mCore->setTransports(transports);
+	core->setUserAgent("Flexisip-conference", FLEXISIP_CONFERENCE_GIT_VERSION);
+	core->enableConferenceServer(true);
+	core->setTransports(transports);
 
 	// Make LinphoneCore slice incoming LIME multipart messages so every forwarded message contains only one encrypted
 	// message instead of having the encrypted version for each recipient.
-	mCore->enableLimeX3Dh(true);
+	core->enableLimeX3Dh(true);
 
 	const int audioPortMin = config->get<ConfigIntRange>("audio-port")->readMin();
 	const int audioPortMax = config->get<ConfigIntRange>("audio-port")->readMax();
-	configuration_utils::setMediaPort(audioPortMin, audioPortMax, *mCore, &Core::setAudioPort,
-	                                  &Core::setAudioPortRange);
+	configuration_utils::setMediaPort(audioPortMin, audioPortMax, *core, &Core::setAudioPort, &Core::setAudioPortRange);
 
 	const int videoPortMin = config->get<ConfigIntRange>("video-port")->readMin();
 	const int videoPortMax = config->get<ConfigIntRange>("video-port")->readMax();
-	configuration_utils::setMediaPort(videoPortMin, videoPortMax, *mCore, &Core::setVideoPort,
-	                                  &Core::setVideoPortRange);
+	configuration_utils::setMediaPort(videoPortMin, videoPortMax, *core, &Core::setVideoPort, &Core::setVideoPortRange);
 
-	mCore->setUseFiles(true); // No sound card shall be used in calls.
+	core->setUseFiles(true); // No sound card shall be used in calls.
 
 	// Configure supported audio codecs. Only use the first one if audio-engine-mode is set to 'sfu'.
 	const auto* audioCodecsParam = config->get<ConfigStringList>("supported-audio-codecs");
 	auto audioCodecs = audioCodecsParam->read();
 	if (audioEngineMode->read() == "sfu") {
-		enableSelectedCodecs(mCore->getAudioPayloadTypes(), {audioCodecs.front()}, audioCodecsParam);
+		enableSelectedCodecs(core->getAudioPayloadTypes(), {audioCodecs.front()}, audioCodecsParam);
 	} else {
-		enableSelectedCodecs(mCore->getAudioPayloadTypes(), std::move(audioCodecs), audioCodecsParam);
+		enableSelectedCodecs(core->getAudioPayloadTypes(), std::move(audioCodecs), audioCodecsParam);
 	}
 
 	// Configure supported video codec.
@@ -169,26 +166,26 @@ void ConferenceServer::_init() {
 	const auto videoCodec = videoCodecParam->read();
 	if (videoCodec != "vp8")
 		throw BadConfigurationValue{videoCodecParam, "only VP8 is supported as of today for video conferences"};
-	enableSelectedCodecs(mCore->getVideoPayloadTypes(), {videoCodec}, videoCodecParam);
+	enableSelectedCodecs(core->getVideoPayloadTypes(), {videoCodec}, videoCodecParam);
 
 	const auto encryption = config->get<ConfigString>("encryption")->read();
 	const auto encryptionMode = StringUtils::string2MediaEncryption(encryption);
 	if (encryptionMode) {
-		mCore->setMediaEncryption(*encryptionMode);
+		core->setMediaEncryption(*encryptionMode);
 	}
 
 	// Create a directory in order to automatically generate DTLS-SRTP certificates.
 	const auto dtlsDir = getStateDir("dtls-srtp");
 	ensureDirectoryCreated(dtlsDir);
-	mCore->setUserCertificatesPath(dtlsDir);
+	core->setUserCertificatesPath(dtlsDir);
 
-	mCore->setVideoDisplayFilter("MSExtDisplay");
+	core->setVideoDisplayFilter("MSExtDisplay");
 
 	// Enable ICE (with host candidates only) so that the relay service of the proxies is bypassed.
-	shared_ptr<NatPolicy> natPolicy = mCore->createNatPolicy();
+	shared_ptr<NatPolicy> natPolicy = core->createNatPolicy();
 	natPolicy->enableIce(true);
 	configuration_utils::configureNatAddresses(natPolicy, config->get<ConfigStringList>("nat-addresses"));
-	mCore->setNatPolicy(natPolicy);
+	core->setNatPolicy(natPolicy);
 
 	loadFactoryUris();
 
@@ -200,7 +197,7 @@ void ConferenceServer::_init() {
 	bool defaultAccountSet = false;
 	for (const auto& conferenceServerUris : mConfServerUris) {
 		const auto factoryUri = Factory::get()->createAddress(conferenceServerUris.first);
-		const auto accountParams = mCore->createAccountParams();
+		const auto accountParams = core->createAccountParams();
 
 		if (!conferenceServerUris.second.empty()) {
 			auto focusUri = Factory::get()->createAddress(conferenceServerUris.second);
@@ -213,16 +210,16 @@ void ConferenceServer::_init() {
 		accountParams->enableRegister(false);
 		accountParams->enableOutboundProxy(true);
 		accountParams->setConferenceFactoryAddress(factoryUri);
-		auto account = mCore->createAccount(accountParams);
+		auto account = core->createAccount(accountParams);
 
 		// The default contact address is the identity address.
 		// It will be used if the connection to the REDIS server is broken or the answer is very slow and a client calls
 		// a conference before onRecordFound() is executed.
 		account->setContactAddress(accountParams->getIdentityAddress());
-		mCore->addAccount(account);
+		core->addAccount(account);
 		if (!defaultAccountSet) {
 			defaultAccountSet = true;
-			mCore->setDefaultAccount(account);
+			core->setDefaultAccount(account);
 		}
 		mLocalDomains.push_back(factoryUri->getDomain());
 	}
@@ -237,35 +234,43 @@ void ConferenceServer::_init() {
 	mLocalDomains.unique();
 
 	auto refreshDelay = config->get<ConfigDuration<seconds>>("subscription-refresh-delay")->readAndCast();
-	mRegEventClientFactory = make_shared<registration_event::ClientFactory>(mCore, refreshDelay);
+	mRegEventClientFactory = make_shared<registration_event::ClientFactory>(core, refreshDelay);
 
-	mCore->enableEmptyChatroomsDeletion(config->get<ConfigBoolean>("empty-chat-room-deletion")->read());
+	core->enableEmptyChatroomsDeletion(config->get<ConfigBoolean>("empty-chat-room-deletion")->read());
 	if (config->get<ConfigBoolean>("cleanup-expired-conferences")->read())
 		// Hardcoded cleanup period of 1 hour
-		mCore->setConferenceCleanupPeriod(600);
+		core->setConferenceCleanupPeriod(600);
 
-	mCore->setConferenceAvailabilityBeforeStart(
+	core->setConferenceAvailabilityBeforeStart(
 	    config->get<ConfigDuration<seconds>>("conferences-availability-before-start")->readAndCast().count());
 
-	mCore->setConferenceExpirePeriod(
+	core->setConferenceExpirePeriod(
 	    config->get<ConfigDuration<seconds>>("conferences-expiry-time")->readAndCast().count());
 
-	mCore->setMaxParticipantsPerChatroom(config->get<ConfigInt>("max-participants-per-chatroom")->read());
+	core->setMaxParticipantsPerChatroom(config->get<ConfigInt>("max-participants-per-chatroom")->read());
 
-	mCore->enableChatRoomAddressUnification(config->get<ConfigBoolean>("chatroom-address-unification")->read());
+	core->enableChatRoomAddressUnification(config->get<ConfigBoolean>("chatroom-address-unification")->read());
 
-	mCore->enableUpdateDbAtStartup(config->get<ConfigBoolean>("database-migration-on-startup")->read());
+	core->enableUpdateDbAtStartup(config->get<ConfigBoolean>("database-migration-on-startup")->read());
 
 	const auto handledChatroomCategory = config->get<ConfigString>("handled-chatroom-category");
-	mCore->setChatRoomsHandlingSet(getChatRoomsHandlingSet(handledChatroomCategory));
+	core->setChatRoomsHandlingSet(getChatRoomsHandlingSet(handledChatroomCategory));
+
+	return core;
+}
+
+void ConferenceServer::_init() {
+	mCore = createCore();
+	mCore->addListener(shared_from_this());
 
 	Status err = mCore->start();
 	if (err == -2) throw ExitFailure{"the Linphone core could not start because the connection to the database failed"};
 	if (err < 0) throw ExitFailure{"the Linphone core failed to start (please check the logs)"};
 
 	// In case no uuid was set in persistent state directory, take the one randomly chosen by Liblinphone.
-	if (uuid.empty()) writeUuid(configLinphone->getString("misc", "uuid", ""));
-	else if (configLinphone->getString("misc", "uuid", "") != uuid) throw BadConfiguration{"inconsistent uuid"};
+	const auto coreUuid = mCore->getConfig()->getString("misc", "uuid", "");
+	if (mUuid.empty()) writeUuid(coreUuid);
+	else if (coreUuid != mUuid) throw BadConfiguration{"inconsistent uuid"};
 
 	mRegistrarDb->addStateListener(shared_from_this());
 	if (mRegistrarDb->isWritable()) bindAddresses();
@@ -305,13 +310,14 @@ void ConferenceServer::_run() {
 
 unique_ptr<AsyncCleanup> ConferenceServer::_stop() {
 	const auto sharedThis = shared_from_this();
-	mCore->removeListener(sharedThis);
+	// mCore can be null if an exception was thrown in createCore().
+	if (mCore) mCore->removeListener(sharedThis);
 	mRegistrarDb->removeStateListener(sharedThis);
 	for (const auto& chatroom : mChatRooms) {
 		chatroom->removeListener(sharedThis);
 	}
 	mSubscriptionHandler.unsubscribeAll();
-	mCore->stop();
+	if (mCore) mCore->stop();
 	return nullptr;
 }
 
@@ -511,6 +517,17 @@ void ConferenceServer::bindChatRoom(const string& bindingUrl,
 	if (uri.getUser().empty()) throw FlexisipException{"trying to bind with no username"};
 
 	mRegistrarDb->bind(uri, sipContact, parameter, listener);
+}
+
+ConferenceServer::DatabaseUpgradeStatus ConferenceServer::getDatabaseUpgradeStatus() {
+	if (!mCore) mCore = createCore();
+	if (!mMediaConfig.textEnabled) return DatabaseUpgradeStatus::NoDatabase;
+	return mCore->needUpgradeDatabase() ? DatabaseUpgradeStatus::UpgradeNeeded : DatabaseUpgradeStatus::UpToDate;
+}
+
+int ConferenceServer::upgradeDatabase() {
+	if (!mCore) mCore = createCore();
+	return mCore->upgradeDatabase();
 }
 
 namespace {
