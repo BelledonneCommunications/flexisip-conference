@@ -1,0 +1,78 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "description": "Deafult features enabled",
+      "hidden": true,
+      "cacheVariables": {
+        "ENABLE_EKT_SERVER": "ON",
+        "ENABLE_G729": "ON"
+      }
+    },
+    {
+      "name": "packaging",
+      "description": "Base for packaging presets",
+      "inherits": "default",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_INSTALL_PREFIX": "/opt/belledonne-communications/flexisip-conference",
+        "FLEXISIP_SYSTEMD_INSTALL_DIR": "/usr/lib/systemd/system",
+        "LOGROTATE_DIR": "/etc/logrotate.d"
+      }
+    },
+    {
+      "name": "rpm-packaging",
+      "displayName": "RPM packaging",
+      "description": "Default RPM packaging",
+      "inherits": "packaging",
+      "cacheVariables": {
+        "CPACK_GENERATOR": "RPM"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug with all features",
+      "description": "Debug build with all features enabled",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "deb-packaging",
+      "displayName": "DEB packaging",
+      "description": "Default DEB packaging",
+      "inherits": "packaging",
+      "cacheVariables": {
+        "CPACK_GENERATOR": "DEB"
+      }
+    },
+    {
+      "name": "tests-without-sanitizer",
+      "displayName": "Build for tests wihtout sanitizer",
+      "description": "Configuration to run Flexisip-conference tests",
+      "inherits": "debug",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "OFF",
+        "ENABLE_UNIT_TESTS": "ON"
+      }
+    },
+    {
+      "name": "tests-with-sanitizer",
+      "displayName": "Build for tests with sanitizer",
+      "description": "Configuration to run Flexisip tests-conference with sanitizer",
+      "inherits": "debug",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_UNIT_TESTS": "ON"
+      }
+    }
+  ]
+}

@@ -117,6 +117,14 @@ cmake ./build -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications/flexisip-con
 cmake --build ./build -j<njobs> package
 ```
 
+Cmake presets are also available for standard DEB and RPM packaging (`deb-packaging` and `rpm-packaging`):
+
+```bash
+cmake ./build --preset rpm-packaging
+cmake --build ./build -j<njobs> package
+```
+
+
 Packages are now available in the `./build` directory.
 
 [More info on RPM packaging](./packaging/rpm/README.md)

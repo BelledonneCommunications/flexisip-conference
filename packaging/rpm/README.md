@@ -7,12 +7,12 @@ We use CPack to generate `.rpm`s for Flexisip.
 You need a [CMake build environment] with the additional requirement that `rpm` is installed.
 The [`bc-dev-rocky9` docker image] meets those criteria.
 
-You should refer to the [`.job-linux-rpm` CI job] for up-to-date instructions, but as of 2026-04-10, here is the gist:
+You should refer to the [`.job-linux-rpm` CI job] for up-to-date instructions, but as of 2026-11-10, here is the gist:
 
 ```sh
 mkdir build.rocky9.rpm && cd build.rocky9.rpm
 
-cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/opt/belledonne-communications/flexisip-conference -DFLEXISIP_SYSTEMD_INSTALL_DIR=/usr/lib/systemd/system -DLOGROTATE_DIR=/etc/logrotate.d -DCPACK_GENERATOR=RPM ..
+cmake --preset rpm-packaging -G Ninja ..
 
 cmake --build . --target package
 ```
